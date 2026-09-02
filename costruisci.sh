@@ -12,6 +12,7 @@ command -v swiftc >/dev/null || {
 rm -rf "$FUORI"
 mkdir -p "$FUORI/Contents/MacOS" "$FUORI/Contents/Resources"
 cp Risorse/Info.plist "$FUORI/Contents/Info.plist"
+[ -f Risorse/Bevi.icns ] && cp Risorse/Bevi.icns "$FUORI/Contents/Resources/"
 
 echo "Compilo…"
 swiftc -O -swift-version 5 \

@@ -1,10 +1,21 @@
+<div align="center">
+
+<img src="documentazione/icona.png" width="112" alt="">
+
 # Bevi
 
-Una goccia nella barra in alto del Mac che ti ricorda di bere, e **tace quando non deve
-disturbare**.
+**Una goccia nella barra del Mac che ti ricorda di bere, e tace quando non deve disturbare.**
 
-Niente finestre, niente icona nel Dock, niente account. Un clic sulla goccia e c'è tutto:
-i bicchieri di oggi, «ho appena bevuto», il passo, la fascia oraria, la pausa.
+![macOS 13+](https://img.shields.io/badge/macOS-13%2B-0E2338?style=flat-square)
+![Swift 5](https://img.shields.io/badge/Swift-5-5AB4F0?style=flat-square)
+![MIT](https://img.shields.io/badge/licenza-MIT-3FBF8F?style=flat-square)
+
+<img src="documentazione/cartello.png" width="760" alt="Il cartello a tutto schermo">
+
+</div>
+
+Niente finestre, niente icona nel Dock, niente account, nessuna rete. Un clic sulla goccia
+e c'è tutto: i bicchieri di oggi, «ho appena bevuto», il passo, la fascia oraria, la pausa.
 
 Quando è il momento, un cartello blu attraversa tutti i monitor per due secondi e sparisce
 da solo. Non ruba il fuoco alla tastiera: se stai scrivendo, le lettere continuano ad
@@ -60,6 +71,8 @@ lo trovi lì ad aspettarti — non ne hai persi tre.
 
 ## Il pannello
 
+<img src="documentazione/pannello.png" width="330" align="right" alt="Il pannello">
+
 Un clic sulla goccia e scende il pannello. Non è un menu di sistema: è disegnato, con la
 stessa identità del cartello a tutto schermo.
 
@@ -80,6 +93,8 @@ dire che qualcosa è cambiato, non a fare scena.
 > sistema prende il **colore accento** scelto nelle impostazioni del Mac: su una macchina con
 > l'accento arancione o rosso, quattro interruttori accesi litigano con tutto il resto. La
 > forma resta identica a quella di sistema, cambia solo il colore.
+
+<br clear="right">
 
 ---
 
@@ -144,6 +159,19 @@ Misurato su un Mac Apple Silicon, app in servizio con il pannello chiuso.
 Non è un caso, è il progetto: il controllo ogni 30 secondi si ferma quasi sempre alla prima
 domanda, che è leggere un file di novanta byte. Le domande care (il Focus, la chiamata in
 corso) si pagano una volta all'ora scarsa, e solo dopo che tutto il resto ha detto sì.
+
+## In English
+
+**Bevi** is a macOS menu bar app that reminds you to drink water, and knows when to keep
+quiet. It stays silent while you are on a video call (it watches whether the webcam is on
+or a microphone has been busy without interruption for 14 seconds, which tells a meeting
+apart from dictation), while a Focus is on, when the screen is locked, and when you have
+been away from the keyboard for ten minutes. In none of those cases is the reminder burned:
+the clock does not restart, so it is still waiting for you when you come back.
+
+Four Swift files, no dependencies, no network, no account. Build and install with
+`./installa.sh`. Settings live in two plain text files under
+`~/Library/Application Support/Bevi/`. The interface is in Italian.
 
 ## Licenza
 
