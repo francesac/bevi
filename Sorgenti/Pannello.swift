@@ -6,8 +6,8 @@
 //
 //  ⭐ Le regole che tengono insieme il disegno:
 //     · l'azzurro è SOLO azione e selezione, mai decorazione;
-//     · un vocabolario solo di controlli — pillole ovunque, e per gli interruttori quello
-//       vero di macOS (che segue anche il colore scelto nelle impostazioni del Mac);
+//     · un vocabolario solo di controlli — pillole ovunque, e un interruttore disegnato a
+//       mano che tiene la forma di quello di macOS ma non il suo colore accento (vedi sotto);
 //     · il movimento dice uno stato che cambia, e dura 180 ms. Niente coreografie all'apertura:
 //       questo pannello si apre venti volte al giorno.
 

@@ -28,7 +28,7 @@ arrivare nell'app che sta sotto.
 Serve solo Xcode Command Line Tools (`xcode-select --install`), niente altro.
 
 ```bash
-git clone https://github.com/<utente>/bevi.git
+git clone https://github.com/francesac/bevi.git
 cd bevi
 ./installa.sh
 ```
@@ -114,14 +114,16 @@ Nessuna rete, nessuna telemetria, nessun account: i dati non escono mai dal tuo 
 
 ## Com'è fatta
 
-Quattro file Swift, nessuna dipendenza esterna.
+Sei file Swift, nessuna dipendenza esterna.
 
 | File | Cosa fa |
 |---|---|
-| `Sorgenti/main.swift` | l'icona nella barra, il menu, il controllo ogni 30 secondi |
+| `Sorgenti/main.swift` | la goccia nella barra, il controllo ogni 30 secondi, l'avvio automatico |
 | `Sorgenti/Impostazioni.swift` | leggere e scrivere `config` e `stato` |
 | `Sorgenti/Presenza.swift` | webcam, microfono, inattività, schermo bloccato, Focus |
 | `Sorgenti/Cartello.swift` | il cartello a tutto schermo |
+| `Sorgenti/Pannello.swift` | i pezzi con cui il pannello è disegnato: gocce, pillole, interruttori |
+| `Sorgenti/Controllore.swift` | il pannello montato, e cosa succede quando lo si tocca |
 
 I controlli girano **in ordine di costo**: quasi tutti i risvegli si fermano alla prima
 domanda, che costa quanto leggere un file di novanta byte. Quelli cari — il Focus e la
@@ -169,7 +171,7 @@ apart from dictation), while a Focus is on, when the screen is locked, and when 
 been away from the keyboard for ten minutes. In none of those cases is the reminder burned:
 the clock does not restart, so it is still waiting for you when you come back.
 
-Four Swift files, no dependencies, no network, no account. Build and install with
+Six Swift files, no dependencies, no network, no account. Build and install with
 `./installa.sh`. Settings live in two plain text files under
 `~/Library/Application Support/Bevi/`. The interface is in Italian.
 
