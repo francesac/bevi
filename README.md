@@ -25,6 +25,18 @@ arrivare nell'app che sta sotto.
 
 ## Installazione
 
+### Scaricala già pronta
+
+Scarica **`Bevi.zip`** dall'ultima [release](https://github.com/francesac/bevi/releases/latest),
+scompattalo e trascina `Bevi.app` dentro `~/Applications`.
+
+⚠️ L'app non è firmata con un account sviluppatore Apple, quindi al primo avvio macOS dice
+che non riesce a verificarla. Aprila **una volta sola** col tasto destro → **Apri**, e da lì
+in poi parte come tutte le altre. (In alternativa: Impostazioni di Sistema → Privacy e
+sicurezza → **Apri comunque**.)
+
+### Oppure compilala tu
+
 Serve solo Xcode Command Line Tools (`xcode-select --install`), niente altro.
 
 ```bash
@@ -171,9 +183,10 @@ apart from dictation), while a Focus is on, when the screen is locked, and when 
 been away from the keyboard for ten minutes. In none of those cases is the reminder burned:
 the clock does not restart, so it is still waiting for you when you come back.
 
-Six Swift files, no dependencies, no network, no account. Build and install with
-`./installa.sh`. Settings live in two plain text files under
-`~/Library/Application Support/Bevi/`. The interface is in Italian.
+Six Swift files, no dependencies, no network, no account. Grab the ready-made app from the
+[latest release](https://github.com/francesac/bevi/releases/latest) — it is unsigned, so open
+it once with right-click → **Open** — or build it yourself with `./installa.sh`. Settings live
+in two plain text files under `~/Library/Application Support/Bevi/`. The interface is in Italian.
 
 ## Licenza
 
