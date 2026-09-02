@@ -58,15 +58,26 @@ lo trovi lì ad aspettarti — non ne hai persi tre.
 
 ---
 
-## Cosa c'è nel menu
+## Il pannello
 
-- **N bicchieri oggi, su M** e quanto manca al prossimo
-- **Ho appena bevuto** — segna un bicchiere e fa ripartire l'orologio
-- **Fai una pausa** — 30 minuti, 1 ora, 2 ore, fino a domani
-- **Promemoria acceso** · **Cartello a tutto schermo** · **Suono**
-- **Ogni quanto** (30/45/60/90 min) · **Comincia alle** · **Smetti alle** · **Bicchieri al giorno**
-- **Parti all'avvio del Mac**
-- **Mostra un cartello di prova** — non conta nessun bicchiere
+Un clic sulla goccia e scende il pannello. Non è un menu di sistema: è disegnato, con la
+stessa identità del cartello a tutto schermo.
+
+- le **gocce** della giornata, che si riempiono, col numero grande e quanto manca al prossimo
+- **Ho appena bevuto**, che segna un bicchiere e fa ripartire l'orologio
+- gli **interruttori**: promemoria acceso, cartello a tutto schermo, suono, avvio automatico
+- le **regolazioni**: ogni quanto (30/45/60/90 min), da che ora a che ora, bicchieri al giorno
+- la **pausa**: 30 minuti, 1 ora, 2 ore, fino a domani
+- in fondo: un **cartello di prova**, che non conta nessun bicchiere, e **Esci**
+
+Tre regole tengono insieme il disegno: l'azzurro è solo azione e selezione, mai decorazione;
+i controlli parlano una lingua sola (pillole ovunque); il movimento dura 180 ms e serve a
+dire che qualcosa è cambiato, non a fare scena.
+
+> **Perché l'interruttore è disegnato a mano invece di usare quello di macOS.** Quello di
+> sistema prende il **colore accento** scelto nelle impostazioni del Mac: su una macchina con
+> l'accento arancione o rosso, quattro interruttori accesi litigano con tutto il resto. La
+> forma resta identica a quella di sistema, cambia solo il colore.
 
 ---
 
@@ -103,6 +114,17 @@ Il controllo della chiamata può dormire fino a 14 secondi, quindi gira **su una
 sfondo**: l'interfaccia non si pianta mai.
 
 Per ricompilare senza installare: `./costruisci.sh` → `build/Bevi.app`.
+
+**Collaudo automatico.** Un pannello che si disegna ma non comanda niente è il difetto che
+uno scatto non fa vedere, quindi l'app sa premersi i controlli da sola:
+
+```bash
+BEVI_HOME=/tmp/prova-bevi ./build/Bevi.app/Contents/MacOS/Bevi --collaudo
+```
+
+Preme le pillole, gli interruttori e il bottone lungo la stessa strada del mouse, poi
+controlla che il file di configurazione sia davvero cambiato. Esce 0 se è tutto a posto.
+`--anteprima` apre il pannello da solo, comodo per guardarlo.
 
 ---
 
