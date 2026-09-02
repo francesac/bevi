@@ -160,14 +160,14 @@ final class Delegato: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         let ore = DateFormatter()
         ore.dateFormat = "HH:mm"
         Cartello.mostra(sotto: "bicchiere \(conto.conta) di \(imp.obiettivo)  ·  sono le \(ore.string(from: Date()))",
-                        secondi: Double(imp.durata), muto: !imp.suono)
+                        secondi: Double(imp.durata), muto: !imp.suono, suono: imp.nomeSuono)
     }
 
     private func cartelloDiProva() {
         let imp = Impostazioni.leggi()
         bolla.performClose(nil)
         Cartello.mostra(sotto: "prova  ·  nessun bicchiere contato",
-                        secondi: Double(imp.durata), muto: !imp.suono)
+                        secondi: Double(imp.durata), muto: !imp.suono, suono: imp.nomeSuono)
     }
 
     // ── partire da soli all'accensione del Mac ────────────────────────────────

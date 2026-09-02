@@ -44,6 +44,18 @@ struct Impostazioni {
     var schermo    = true      // il cartello grande a tutto schermo
     var suono      = true
     var durata     = 2         // secondi di permanenza del cartello
+    var nomeSuono  = "Submarine"
+
+    /// I suoni proposti: brevi, e già presenti su ogni Mac.
+    /// ⛔ La scelta è chiusa a questa lista, e non per pignoleria: il file `config` viene
+    ///    letto anche da script di shell con un `. config`, quindi un valore arbitrario
+    ///    finirebbe eseguito. Fuori lista si torna al suono di partenza.
+    static let suoni: [(nome: String, file: String)] = [
+        ("Bolla", "Bottle"), ("Pop", "Pop"), ("Vetro", "Glass"), ("Sonar", "Submarine"),
+    ]
+    static func suonoValido(_ file: String) -> String {
+        suoni.contains { $0.file == file } ? file : "Submarine"
+    }
 
     static func leggi() -> Impostazioni {
         var i = Impostazioni()
@@ -52,8 +64,10 @@ struct Impostazioni {
             let pulita = riga.trimmingCharacters(in: .whitespaces)
             guard !pulita.hasPrefix("#"), let taglio = pulita.firstIndex(of: "=") else { continue }
             let chiave = String(pulita[pulita.startIndex..<taglio])
-            guard let valore = Int(pulita[pulita.index(after: taglio)...]
-                                    .trimmingCharacters(in: .whitespaces)) else { continue }
+            let grezzo = pulita[pulita.index(after: taglio)...]
+                .trimmingCharacters(in: .whitespaces)
+            if chiave == "nome_suono" { i.nomeSuono = Impostazioni.suonoValido(grezzo); continue }
+            guard let valore = Int(grezzo) else { continue }
             switch chiave {
             case "attivo":     i.attivo     = valore != 0
             case "intervallo": i.intervallo = max(60, valore)
@@ -84,6 +98,7 @@ struct Impostazioni {
         schermo=\(schermo ? 1 : 0)
         suono=\(suono ? 1 : 0)
         durata=\(durata)
+        nome_suono=\(Impostazioni.suonoValido(nomeSuono))
 
         """
         let ponte = Casa.config.appendingPathExtension("tmp")

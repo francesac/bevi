@@ -67,6 +67,8 @@ stessa identità del cartello a tutto schermo.
 - **Ho appena bevuto**, che segna un bicchiere e fa ripartire l'orologio
 - gli **interruttori**: promemoria acceso, cartello a tutto schermo, suono, avvio automatico
 - le **regolazioni**: ogni quanto (30/45/60/90 min), da che ora a che ora, bicchieri al giorno
+- il **suono**: quattro suoni brevi già presenti su ogni Mac, e si sentono quando li scegli
+  (Bolla = `Bottle`, Pop = `Pop`, Vetro = `Glass`, Sonar = `Submarine`)
 - la **pausa**: 30 minuti, 1 ora, 2 ore, fino a domani
 - in fondo: un **cartello di prova**, che non conta nessun bicchiere, e **Esci**
 
@@ -127,6 +129,21 @@ controlla che il file di configurazione sia davvero cambiato. Esce 0 se è tutto
 `--anteprima` apre il pannello da solo, comodo per guardarlo.
 
 ---
+
+## Quanto consuma
+
+Misurato su un Mac Apple Silicon, app in servizio con il pannello chiuso.
+
+| | |
+|---|---|
+| **Memoria** | 16 MB di impronta reale, quella che mostra Monitoraggio Attività |
+| **CPU** | 0,049% di un core: **43 secondi di calcolo in 24 ore** accese |
+| **Risvegli inutili** | 2 ogni 30 secondi |
+| **Impatto energetico** | 0.0 |
+
+Non è un caso, è il progetto: il controllo ogni 30 secondi si ferma quasi sempre alla prima
+domanda, che è leggere un file di novanta byte. Le domande care (il Focus, la chiamata in
+corso) si pagano una volta all'ora scarsa, e solo dopo che tutto il resto ha detto sì.
 
 ## Licenza
 

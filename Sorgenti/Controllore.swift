@@ -22,6 +22,7 @@ final class Controllore: NSViewController {
     private lazy var suono   = Interruttore(azione: #selector(interruttore(_:)), bersaglio: self)
     private lazy var avvio   = Interruttore(azione: #selector(interruttore(_:)), bersaglio: self)
     private var gruppoPasso: Gruppo!, gruppoDalle: Gruppo!, gruppoAlle: Gruppo!, gruppoMeta: Gruppo!
+    private var gruppoSuono: Gruppo!
     private let rigaPausa = NSStackView()
     private var battito: Timer?
     private var bottone: BottonePieno!
@@ -117,11 +118,15 @@ final class Controllore: NSViewController {
                              azione: #selector(scegliAlle(_:)), bersaglio: self)
         gruppoMeta  = Gruppo(valori: [("6", 6), ("8", 8), ("10", 10), ("12", 12)],
                              azione: #selector(scegliMeta(_:)), bersaglio: self)
+        gruppoSuono = Gruppo(
+            valori: Impostazioni.suoni.enumerated().map { ($0.element.nome, $0.offset) },
+            azione: #selector(scegliSuono(_:)), bersaglio: self)
         return carta(righe: [
             riga("Ogni quanto", gruppoPasso.vista),
             riga("Comincia alle", gruppoDalle.vista),
             riga("Smetti alle", gruppoAlle.vista),
             riga("Bicchieri al giorno", gruppoMeta.vista),
+            riga("Suono", gruppoSuono.vista),
         ])
     }
 
@@ -250,6 +255,7 @@ final class Controllore: NSViewController {
         gruppoDalle.segna(imp.dalle)
         gruppoAlle.segna(imp.alle)
         gruppoMeta.segna(imp.obiettivo)
+        gruppoSuono.segna(Impostazioni.suoni.firstIndex { $0.file == imp.nomeSuono } ?? 3)
 
         componiPausa(imp)
 
@@ -257,9 +263,12 @@ final class Controllore: NSViewController {
         let vive = imp.attivo ? 1.0 : 45.0/100
         for gruppo in [gruppoPasso!, gruppoDalle!, gruppoAlle!, gruppoMeta!] {
             gruppo.vista.alphaValue = vive
-            gruppo.vista.isHidden = false
             for p in gruppo.pillole { p.isEnabled = imp.attivo }
         }
+        // la scelta del suono si smorza anche quando il suono è tolto: non avrebbe effetto
+        let suona = imp.attivo && imp.suono
+        gruppoSuono.vista.alphaValue = suona ? 1 : 45.0/100
+        for p in gruppoSuono.pillole { p.isEnabled = suona }
         rigaPausa.alphaValue = vive
     }
 
@@ -324,6 +333,13 @@ final class Controllore: NSViewController {
     @objc private func scegliDalle(_ p: Pillola) { modifica { $0.dalle = p.valore } }
     @objc private func scegliAlle(_ p: Pillola)  { modifica { $0.alle = p.valore } }
     @objc private func scegliMeta(_ p: Pillola)  { modifica { $0.obiettivo = p.valore } }
+
+    /// Scegliendo un suono lo si sente: è l'unico modo per capire quale si sta prendendo.
+    @objc private func scegliSuono(_ p: Pillola) {
+        let scelto = Impostazioni.suoni[p.valore].file
+        modifica { $0.nomeSuono = scelto }
+        NSSound(named: scelto)?.play()
+    }
     @objc private func riprendi()                { modifica { $0.pausaFino = 0 } }
 
     @objc private func pausa(_ p: Pillola) {
@@ -357,6 +373,11 @@ final class Controllore: NSViewController {
         gruppoMeta.pillole.first { $0.valore == 12 }?.performClick(nil)
         verifica("pillola «12 bicchieri»", "12", "\(Impostazioni.leggi().obiettivo)")
 
+        gruppoSuono.pillole.first { $0.valore == 0 }?.performClick(nil)
+        verifica("pillola «suono Bolla»", "Bottle", Impostazioni.leggi().nomeSuono)
+
+        // ⚠️ l'ordine conta: a suono spento le pillole dei suoni sono disattivate, quindi
+        //    la scelta va provata PRIMA di togliere il suono. Trovato dal collaudo stesso.
         let prima = Impostazioni.leggi().suono
         suono.performClick(nil)
         verifica("interruttore «Suono»", "\(!prima)", "\(Impostazioni.leggi().suono)")
