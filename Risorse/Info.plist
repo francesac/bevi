@@ -13,6 +13,11 @@
     <key>LSMinimumSystemVersion</key>    <string>13.0</string>
     <!-- LSUIElement: vive solo nella barra in alto. Niente Dock, niente cambio-app. -->
     <key>LSUIElement</key>               <true/>
+    <!-- lo spagnolo a voce: il microfono, e il riconoscimento che lavora tutto sul Mac -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Per ascoltarti mentre dici la frase in spagnolo. L'audio resta sul Mac.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Per capire cosa hai detto in spagnolo e correggerti. Lavora sul Mac, senza rete.</string>
     <key>NSHumanReadableCopyright</key>  <string>MIT</string>
 </dict>
 </plist>

@@ -13,6 +13,7 @@ rm -rf "$FUORI"
 mkdir -p "$FUORI/Contents/MacOS" "$FUORI/Contents/Resources"
 cp Risorse/Info.plist "$FUORI/Contents/Info.plist"
 [ -f Risorse/Bevi.icns ] && cp Risorse/Bevi.icns "$FUORI/Contents/Resources/"
+cp Risorse/spagnolo.json "$FUORI/Contents/Resources/"      # le schede dell'esercizio
 
 echo "Compilo…"
 swiftc -O -swift-version 5 \

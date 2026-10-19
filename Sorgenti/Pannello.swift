@@ -27,12 +27,13 @@ enum Colori {
     static let scuro     = NSColor(srgbRed:  4.0/255, green: 18.0/255, blue: 30.0/255, alpha: 1)
     static let pillola   = NSColor(srgbRed: 19.0/255, green: 44.0/255, blue: 69.0/255, alpha: 1)
     static let pillolaSu = NSColor(srgbRed: 26.0/255, green: 56.0/255, blue: 82.0/255, alpha: 1)
+    static let corallo   = NSColor(srgbRed: 240.0/255, green: 128.0/255, blue: 112.0/255, alpha: 1)
     static let verde     = NSColor(srgbRed: 63.0/255, green: 191.0/255, blue: 143.0/255, alpha: 1)
     static let cimaCarta = NSColor(srgbRed: 18.0/255, green: 57.0/255, blue: 92.0/255, alpha: 1)
     static let fondoCarta = NSColor(srgbRed: 11.0/255, green: 31.0/255, blue: 51.0/255, alpha: 1)
 }
 
-private let curva = CAMediaTimingFunction(controlPoints: 22.0/100, 61.0/100, 36.0/100, 1)
+let curva = CAMediaTimingFunction(controlPoints: 22.0/100, 61.0/100, 36.0/100, 1)
 
 // ── mattoni ───────────────────────────────────────────────────────────────────
 

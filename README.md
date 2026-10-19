@@ -108,6 +108,42 @@ dire che qualcosa è cambiato, non a fare scena.
 
 <br clear="right">
 
+## Lo spagnolo, un bicchiere alla volta
+
+Facoltativo, spento di serie: interruttore **Esercizio di spagnolo** nel pannello. Quando il
+cartello sfuma, al suo posto resta lo stesso velo blu su tutti i monitor e, al centro dello
+schermo dove sta il mouse, una carta con un esercizio da meno di un minuto. La carta prende la
+tastiera (si scrive e si preme Invio), e **Salta** c'è sempre.
+
+Dopo la risposta la carta diventa un **resoconto**: com'è andata, cosa hai risposto tu, la
+forma giusta, cosa vuol dire in italiano e il perché. Un clic ovunque (o Invio, o Esc) lo spegne.
+Come il cartello, la carta **non esce durante una chiamata**; e se una chiamata parte mentre è
+aperta (la webcam si accende), o se non sei al Mac da cinque minuti, se ne va da sola senza
+segnare niente.
+
+- **sei tipi**, alternati: la parola da tradurre, la frase da completare, la scelta fra tre,
+  la frase da ascoltare e ripetere a voce, la frase da dire in spagnolo, la domanda a cui
+  rispondere con parole tue
+- almeno un esercizio su tre è **a voce**: il Mac legge la frase (voce castigliana) e ti
+  ascolta. Il riconoscimento è quello di macOS 26 e lavora **sul Mac, senza rete**: l'audio
+  non esce mai dal computer
+- le schede tornano col **ripasso dilazionato**: quella sbagliata fra due ore, quella saputa
+  fra 1, 3, 7, 16, 35, 90 giorni. Sei schede nuove al giorno, il resto è ripasso
+- le novità girano sui **tre livelli** dal primo giorno: chi ha le basi di scuola sa le
+  parole e inciampa sui tempi, e in fila per livello i tempi arriverebbero dopo due mesi
+- solo **spagnolo parlato**, quello di Spagna: tú e mai usted, le espressioni di tutti i
+  giorni (*vale*, *quedar*, *el curro*, *¿te apetece?*), qualche parolaccia comune segnalata
+  come tale. La forma da libro, se esiste, è accettata come risposta ma non è quella insegnata
+- le minuscole e la punteggiatura non contano; un accento sbagliato vale «quasi»
+- su un Mac più vecchio di macOS 26 gli esercizi a voce diventano «dilla, guarda la
+  soluzione, dimmi com'è andata»
+
+Le schede stanno in `Risorse/spagnolo.json`; i progressi in `spagnolo` e `spagnolo-diario`,
+accanto al config. Per provarlo senza aspettare: **Fanne uno adesso** nel pannello, o
+`Bevi --spagnolo ripeti` dal terminale (anche un id: `--spagnolo co-067`). Per guardare il
+resoconto senza mani: `BEVI_SCATTI=/tmp/x Bevi --spagnolo co-067 --risponde es --muto` — la
+carta si risponde da sola, salva `domanda.png` e `resoconto.png` e si chiude.
+
 ---
 
 ## Dove tiene i dati

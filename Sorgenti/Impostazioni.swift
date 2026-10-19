@@ -45,6 +45,7 @@ struct Impostazioni {
     var suono      = true
     var durata     = 2         // secondi di permanenza del cartello
     var nomeSuono  = "Submarine"
+    var spagnolo   = false     // dopo il cartello, un esercizio di spagnolo (vedi Spagnolo.swift)
 
     /// I suoni proposti: brevi, e già presenti su ogni Mac.
     /// ⛔ La scelta è chiusa a questa lista, e non per pignoleria: il file `config` viene
@@ -78,6 +79,7 @@ struct Impostazioni {
             case "schermo":    i.schermo    = valore != 0
             case "suono":      i.suono      = valore != 0
             case "durata":     i.durata     = max(1, valore)
+            case "spagnolo":   i.spagnolo   = valore != 0
             default: break
             }
         }
@@ -99,6 +101,7 @@ struct Impostazioni {
         suono=\(suono ? 1 : 0)
         durata=\(durata)
         nome_suono=\(Impostazioni.suonoValido(nomeSuono))
+        spagnolo=\(spagnolo ? 1 : 0)
 
         """
         let ponte = Casa.config.appendingPathExtension("tmp")

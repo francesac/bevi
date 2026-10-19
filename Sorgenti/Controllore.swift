@@ -7,6 +7,7 @@ final class Controllore: NSViewController {
     /// Chiamata a ogni modifica, perché la goccia nella barra si aggiorni all'istante.
     var alCambio: (() -> Void)?
     var alProva:  (() -> Void)?
+    var alSpagnolo: (() -> Void)?
     var alUscita: (() -> Void)?
     var leggiAvvio:  (() -> Bool)?
     var cambiaAvvio: (() -> Void)?
@@ -21,6 +22,9 @@ final class Controllore: NSViewController {
     private lazy var schermo = Interruttore(azione: #selector(interruttore(_:)), bersaglio: self)
     private lazy var suono   = Interruttore(azione: #selector(interruttore(_:)), bersaglio: self)
     private lazy var avvio   = Interruttore(azione: #selector(interruttore(_:)), bersaglio: self)
+    private lazy var spagnolo = Interruttore(azione: #selector(interruttore(_:)), bersaglio: self)
+    private var quantoSpagnolo = scritta("", corpo: 12, colore: Colori.tenue)
+    private let rigaSpagnolo = NSStackView()
     private var gruppoPasso: Gruppo!, gruppoDalle: Gruppo!, gruppoAlle: Gruppo!, gruppoMeta: Gruppo!
     private var gruppoSuono: Gruppo!
     private let rigaPausa = NSStackView()
@@ -98,12 +102,23 @@ final class Controllore: NSViewController {
     // ── gli interruttori ──────────────────────────────────────────────────────
 
     private func cartaInterruttori() -> NSView {
-        for (i, s) in [acceso, schermo, suono, avvio].enumerated() { s.tag = i }
+        for (i, s) in [acceso, schermo, suono, avvio, spagnolo].enumerated() { s.tag = i }
+        // sotto l'interruttore dello spagnolo: a che punto è, e una carta subito a richiesta
+        rigaSpagnolo.orientation = .horizontal
+        rigaSpagnolo.alignment = .centerY
+        let vuoto = NSView()
+        vuoto.setContentHuggingPriority(.init(1), for: .horizontal)
+        for v in [quantoSpagnolo, vuoto, testoCliccabile("Fanne uno adesso", #selector(unoAdesso))] {
+            rigaSpagnolo.addArrangedSubview(v)
+        }
+        rigaSpagnolo.heightAnchor.constraint(equalToConstant: 30).isActive = true
         return carta(righe: [
             riga("Promemoria acceso", acceso),
             riga("Cartello a tutto schermo", schermo),
             riga("Suono", suono),
             riga("Parti all'avvio del Mac", avvio),
+            riga("Esercizio di spagnolo", spagnolo),
+            rigaSpagnolo,
         ])
     }
 
@@ -250,6 +265,11 @@ final class Controllore: NSViewController {
         schermo.acceso = imp.schermo
         suono.acceso   = imp.suono
         avvio.acceso   = leggiAvvio?() ?? false
+        spagnolo.acceso = imp.spagnolo
+        let n = Quaderno.condiviso.numeri()
+        quantoSpagnolo.stringValue = n.viste == 0 ? "\(n.totale) schede da scoprire"
+            : "\(n.sapute) sapute su \(n.totale)" + (n.daRipassare > 0 ? "  ·  \(n.daRipassare) da ripassare" : "")
+        rigaSpagnolo.alphaValue = imp.spagnolo ? 1 : 45.0/100
 
         gruppoPasso.segna(imp.intervallo / 60)
         gruppoDalle.segna(imp.dalle)
@@ -323,6 +343,7 @@ final class Controllore: NSViewController {
         case 0: modifica { $0.attivo  = s.acceso }
         case 1: modifica { $0.schermo = s.acceso }
         case 2: modifica { $0.suono   = s.acceso }
+        case 4: modifica { $0.spagnolo = s.acceso }
         default:
             cambiaAvvio?()
             aggiorna()
@@ -395,9 +416,16 @@ final class Controllore: NSViewController {
         riprendi?.performClick(nil)
         verifica("pillola «Riprendi»", "false", "\(Impostazioni.leggi().inPausa)")
 
+        let parlava = Impostazioni.leggi().spagnolo
+        spagnolo.performClick(nil)
+        verifica("interruttore «Esercizio di spagnolo»", "\(!parlava)", "\(Impostazioni.leggi().spagnolo)")
+        spagnolo.performClick(nil)
+        verifica("schede di spagnolo caricate", "true", "\(Quaderno.condiviso.schede.count > 100)")
+
         return esiti
     }
 
     @objc private func prova() { alProva?() }
+    @objc private func unoAdesso() { alSpagnolo?() }
     @objc private func esci()  { alUscita?() }
 }

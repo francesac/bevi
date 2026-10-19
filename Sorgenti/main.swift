@@ -37,6 +37,10 @@ final class Delegato: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
         pannello.alCambio    = { [weak self] in self?.aggiornaBarra() }
         pannello.alProva     = { [weak self] in self?.cartelloDiProva() }
+        pannello.alSpagnolo  = { [weak self] in
+            self?.bolla.performClose(nil)
+            Esercizio.mostra(piede: "a richiesta  ·  nessun bicchiere contato", voce: true)
+        }
         pannello.alUscita    = { NSApp.terminate(nil) }
         pannello.leggiAvvio  = { [weak self] in self?.parteDaSolo() ?? false }
         pannello.cambiaAvvio = { [weak self] in self?.cambiaAvvio() }
@@ -59,6 +63,19 @@ final class Delegato: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                 self?.controlla()
             }
         controlla()
+        Orecchio.preparaModello()
+
+        // una carta di spagnolo subito, senza bicchiere: `Bevi --spagnolo [tipo]`
+        if let i = CommandLine.arguments.firstIndex(of: "--spagnolo") {
+            let dopo = CommandLine.arguments.dropFirst(i + 1).first
+            let arg = CommandLine.arguments
+            let scheda = dopo.flatMap { t in Quaderno.condiviso.schede.first { $0.tipo.rawValue == t || $0.id == t } }
+            if let j = arg.firstIndex(of: "--risponde"), j + 1 < arg.count { Esercizio.rispostaDiProva = arg[j + 1] }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                Esercizio.mostra(piede: "prova  ·  nessun bicchiere contato", voce: !arg.contains("--muto"),
+                                 scheda: scheda)
+            }
+        }
 
         if CommandLine.arguments.contains("--collaudo") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0/2) {
@@ -161,6 +178,13 @@ final class Delegato: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         ore.dateFormat = "HH:mm"
         Cartello.mostra(sotto: "bicchiere \(conto.conta) di \(imp.obiettivo)  ·  sono le \(ore.string(from: Date()))",
                         secondi: Double(imp.durata), muto: !imp.suono, suono: imp.nomeSuono)
+        // il bicchiere, poi la carta di spagnolo: entra mentre il cartello sfuma, sullo stesso velo
+        if imp.spagnolo {
+            let piede = "💧 bicchiere \(conto.conta) di \(imp.obiettivo)"
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(imp.durata) + 0.05) {
+                Esercizio.mostra(piede: piede, voce: true)
+            }
+        }
     }
 
     private func cartelloDiProva() {
