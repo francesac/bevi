@@ -36,17 +36,28 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
     /// risponde da sola dopo un secondo e mezzo, così il resoconto si guarda senza mani.
     static var rispostaDiProva: String?
 
-    static func mostra(piede: String, voce: Bool = true, scheda: Scheda? = nil) {
-        guard inCorso == nil, let s = scheda ?? Quaderno.condiviso.prossima() else { return }
+    /// `bevi`: la riga del bicchiere («bicchiere 5 di 8 · sono le 14:16»). Con lei la carta È il
+    /// promemoria: il «Bevi» sta sotto l'esercizio, nello stesso riquadro, col suono del cartello.
+    /// Torna `false` se la carta non si apre (un'altra aperta, nessuna scheda): chi chiama mostra
+    /// allora il cartello da solo, perché il bicchiere non resti senza avviso.
+    @discardableResult
+    static func mostra(piede: String, voce: Bool = true, scheda: Scheda? = nil,
+                       bevi: String? = nil, suono: String? = nil) -> Bool {
+        guard inCorso == nil, let s = scheda ?? Quaderno.condiviso.prossima() else { return false }
         let e = Esercizio(s, piede: piede, voce: voce)
+        e.bevi = bevi
+        e.suono = suono
         inCorso = e
         e.apri()
+        return true
     }
 
     // ── stato ─────────────────────────────────────────────────────────────────
 
     private let scheda: Scheda
     private let piedeTesto: String
+    private var bevi: String?
+    private var suono: String?
     private let parlaAdAltaVoce: Bool
     private var esito: Esito?
     private var detto = ""
@@ -164,8 +175,29 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
 
         aggiungi(filo(), pieno: true)
         let n = Quaderno.condiviso.numeri()
-        aggiungi(scritta("\(piedeTesto)  ·  \(n.sapute) sapute su \(n.totale)", corpo: 11,
-                         colore: Colori.tenue))
+        // i progressi si vedono: le schede viste crescono da subito, le sapute (una settimana
+        // senza sbagliare) arrivano dopo. Con le sole «0 sapute su 777» sembrava non contasse niente.
+        let fatte = n.viste == 0 ? "la prima scheda" : "\(n.viste) viste  ·  \(n.sapute) sapute su \(n.totale)"
+        if let b = bevi {
+            // il promemoria dell'acqua, sotto l'esercizio: lo stesso avviso, ⛔ un secondo dopo il primo
+            let goccia = scritta("💧", corpo: 26)
+            let parole = NSStackView(views: [
+                scritta("Bevi", corpo: 22, peso: .bold, colore: Colori.acqua),
+                scritta(b, corpo: 12, colore: Colori.tenue),
+            ])
+            parole.orientation = .vertical
+            parole.alignment = .leading
+            parole.spacing = 0
+            let conta = scritta(fatte, corpo: 11, colore: Colori.tenue)
+            let riga = NSStackView(views: [goccia, parole, NSView(), conta])
+            riga.orientation = .horizontal
+            riga.alignment = .centerY
+            riga.spacing = 12
+            colonna.setCustomSpacing(14, after: colonna.arrangedSubviews.last!)
+            aggiungi(riga, pieno: true)
+        } else {
+            aggiungi(scritta("\(piedeTesto)  ·  \(fatte)", corpo: 11, colore: Colori.tenue))
+        }
 
         impostaPrimoStato()
         posa(prima: true)
@@ -226,9 +258,15 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
             }
         }
 
-        if parlaAdAltaVoce {
-            if scheda.tipo == .ripeti { Bocca.di(scheda.es, lenta: true) }
-            if scheda.tipo == .parla  { Bocca.di(scheda.domanda) }
+        // il suono del promemoria, poi la voce: lasciata un attimo dopo, per non parlarci sopra
+        var attesa = 0.0
+        if let nome = suono, let suona = NSSound(named: nome) { suona.play(); attesa = 0.9 }
+        if parlaAdAltaVoce && (scheda.tipo == .ripeti || scheda.tipo == .parla) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + attesa) { [weak self] in
+                guard let self, !self.chiudendo, self.esito == nil, !self.inAscolto else { return }
+                Bocca.di(self.scheda.tipo == .ripeti ? self.scheda.es : self.scheda.domanda,
+                         lenta: self.scheda.tipo == .ripeti)
+            }
         }
     }
 
@@ -640,8 +678,14 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
         if let c = clic { NSEvent.removeMonitor(c); clic = nil }
         Bocca.zitta()
         if inAscolto { inAscolto = false; orecchio.annulla() }
-        if segna, let e = esito { Quaderno.condiviso.segna(scheda, e, trascritto: detto) }
-        annota(segna ? "spagnolo \(scheda.id)" : "spagnolo saltato")
+        if segna, let e = esito {
+            Quaderno.condiviso.segna(scheda, e, trascritto: detto)
+            annota("spagnolo \(scheda.id)")
+        } else {
+            // senza un esito la scheda va in fondo alla fila (il collaudo invece non tocca niente)
+            if Esercizio.rispostaDiProva == nil { Quaderno.condiviso.rinvia(scheda) }
+            annota("spagnolo saltato \(scheda.id)")
+        }
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.28
             ctx.timingFunction = curva

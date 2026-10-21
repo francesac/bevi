@@ -97,8 +97,10 @@ final class Quaderno {
     /// con un promemoria ogni mezz'ora sono una ventina di esercizi, e sei novità bastano.
     var nuoveAlGiorno = 6
 
-    /// Gli intervalli delle scatole, in secondi. La scatola 0 rientra fra due ore.
-    static let intervalli = [2 * 3600, 86400, 3 * 86400, 7 * 86400,
+    /// Gli intervalli delle scatole, in secondi. La scatola 0 rientra il giorno dopo: a due ore
+    /// (com'era fino al 21/10/2026) una scheda sbagliata tornava quattro volte in un pomeriggio,
+    /// prima di tutte le altre, e la carta sembrava sempre la stessa.
+    static let intervalli = [86400, 86400, 3 * 86400, 7 * 86400,
                              16 * 86400, 35 * 86400, 90 * 86400]
 
     static var progressi: URL { Casa.cartella.appendingPathComponent("spagnolo") }
@@ -164,7 +166,7 @@ final class Quaderno {
         // dopo due esercizi muti si cerca la voce dappertutto: ripasso, novità, domanda personale
         if senzaVoce >= 2 {
             let nuoveVoce = nuoveOggi < nuoveAlGiorno
-                ? maiViste().filter { $0.tipo == .ripeti || $0.tipo == .traduci }
+                ? maiViste(adesso).filter { $0.tipo == .ripeti || $0.tipo == .traduci }
                 : []
             let domanda = schede.filter { $0.tipo == .parla && (ricordi[$0.id]?.scadenza ?? 0) <= adesso }
             if let s = (scadute + nuoveVoce.prefix(3) + domanda).first(where: { $0.tipo.aVoce }) { return s }
@@ -173,12 +175,16 @@ final class Quaderno {
 
         if nuoveOggi < nuoveAlGiorno {
             // si prende fra le prime dieci del gradino di turno, variando il tipo
-            if let s = variata(Array(maiViste().prefix(10))) { return s }
+            if let s = variata(Array(maiViste(adesso).prefix(10))) { return s }
         }
 
         let domande = schede.filter { $0.tipo == .parla }
             .sorted { (ricordi[$0.id]?.scadenza ?? 0) < (ricordi[$1.id]?.scadenza ?? 0) }
         if let s = domande.first, (ricordi[s.id]?.scadenza ?? 0) <= adesso { return s }
+
+        // niente da ripassare e il tetto delle novità toccato: meglio una scheda nuova in più che
+        // una già vista anticipata, che è proprio la «stessa schedina di ieri»
+        if let s = variata(Array(maiViste(adesso).prefix(10))) { return s }
 
         return schede.filter { $0.tipo != .parla && (ricordi[$0.id]?.viste ?? 0) > 0 }
             .min { (ricordi[$0.id]?.scadenza ?? 0) < (ricordi[$1.id]?.scadenza ?? 0) }
@@ -189,8 +195,10 @@ final class Quaderno {
     /// sui tre livelli dal primo giorno. Chi ha le basi di scuola sa già le parole, e sbaglia
     /// i tempi (passato prossimo per «ieri», «cuando» senza congiuntivo): in fila per livello
     /// quelle schede arriverebbero dopo cinquanta giorni di vocaboli.
-    private func maiViste() -> [Scheda] {
-        let mai = schede.filter { (ricordi[$0.id]?.viste ?? 0) == 0 && $0.tipo != .parla }
+    private func maiViste(_ adesso: Int) -> [Scheda] {
+        // una scheda nuova saltata resta nuova, ma aspetta il suo turno: non si ripresenta subito
+        let mai = schede.filter { (ricordi[$0.id]?.viste ?? 0) == 0 && $0.tipo != .parla
+                                  && (ricordi[$0.id]?.scadenza ?? 0) <= adesso }
         let turno = nuoveOggi % 3 + 1
         return mai.filter { $0.livello == turno } + mai.filter { $0.livello != turno }
     }
@@ -223,6 +231,18 @@ final class Quaderno {
         ricordi[s.id] = r
         salva()
         if s.tipo.aVoce && !trascritto.isEmpty { annotaDiario(s, trascritto, esito) }
+    }
+
+    /// Una carta chiusa senza risposta (Salta, Esc, nessuno davanti, la webcam) non è un esito:
+    /// la scatola resta dov'è, ma la scheda si sposta in fondo. Prima restava prima in fila e il
+    /// promemoria dopo riproponeva la stessa: il 20/10 otto «saltato» di fila sulla stessa carta.
+    func rinvia(_ s: Scheda, adesso: Int = Int(Date().timeIntervalSince1970)) {
+        var r = ricordi[s.id] ?? Ricordo()
+        let quando = adesso + (r.viste == 0 ? 86400 : 4 * 3600)
+        guard r.scadenza < quando else { return }
+        r.scadenza = quando
+        ricordi[s.id] = r
+        salva()
     }
 
     /// Ciò che si è detto a voce resta scritto: rileggerlo fra un mese fa vedere il progresso,

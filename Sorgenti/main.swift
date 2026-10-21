@@ -72,8 +72,10 @@ final class Delegato: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             let scheda = dopo.flatMap { t in Quaderno.condiviso.schede.first { $0.tipo.rawValue == t || $0.id == t } }
             if let j = arg.firstIndex(of: "--risponde"), j + 1 < arg.count { Esercizio.rispostaDiProva = arg[j + 1] }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                // `--bevi`: la carta come arriva col promemoria, «Bevi» sotto compreso
                 Esercizio.mostra(piede: "prova  ·  nessun bicchiere contato", voce: !arg.contains("--muto"),
-                                 scheda: scheda)
+                                 scheda: scheda,
+                                 bevi: arg.contains("--bevi") ? "prova  ·  nessun bicchiere contato" : nil)
             }
         }
 
@@ -176,15 +178,12 @@ final class Delegato: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
         let ore = DateFormatter()
         ore.dateFormat = "HH:mm"
-        Cartello.mostra(sotto: "bicchiere \(conto.conta) di \(imp.obiettivo)  ·  sono le \(ore.string(from: Date()))",
-                        secondi: Double(imp.durata), muto: !imp.suono, suono: imp.nomeSuono)
-        // il bicchiere, poi la carta di spagnolo: entra mentre il cartello sfuma, sullo stesso velo
-        if imp.spagnolo {
-            let piede = "💧 bicchiere \(conto.conta) di \(imp.obiettivo)"
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(imp.durata) + 0.05) {
-                Esercizio.mostra(piede: piede, voce: true)
-            }
-        }
+        let riga = "bicchiere \(conto.conta) di \(imp.obiettivo)  ·  sono le \(ore.string(from: Date()))"
+        // con lo spagnolo acceso l'avviso è UNO: la carta, col «Bevi» sotto l'esercizio (21/10/2026).
+        // Prima il cartello e poi la carta, due avvisi in fila. Se la carta non si apre, il cartello.
+        if imp.spagnolo, Esercizio.mostra(piede: "", voce: true, bevi: riga,
+                                          suono: imp.suono ? imp.nomeSuono : nil) { return }
+        Cartello.mostra(sotto: riga, secondi: Double(imp.durata), muto: !imp.suono, suono: imp.nomeSuono)
     }
 
     private func cartelloDiProva() {
