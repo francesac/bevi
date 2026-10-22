@@ -5,7 +5,7 @@
 //  dei dati, un file di testo con una riga per scheda.
 //
 //  ⭐ Il ripasso è a scatole (Leitner): una scheda indovinata sale di scatola e torna dopo
-//     un intervallo più lungo; una sbagliata torna nella prima e rientra in giornata.
+//     un intervallo più lungo; una sbagliata torna nella prima e rientra il giorno dopo.
 //     È la ripetizione dilazionata, la pratica con più prove per fissare il lessico.
 //  ⭐ Nessuna intelligenza artificiale: le risposte si confrontano con quelle accettate,
 //     e il parlato lo trascrive il Mac stesso (vedi Voce.swift).
@@ -92,6 +92,7 @@ final class Quaderno {
     private var giornoNuove = ""
     private var ultimoTipo: Tipo?
     private var senzaVoce = 0
+    private var ripassiDiFila = 0   // ripassi dall'ultima novità: a uno, tocca a una scheda nuova
 
     /// Quante schede MAI viste si aprono al giorno. Il resto dei promemoria è ripasso:
     /// con un promemoria ogni mezz'ora sono una ventina di esercizi, e sei novità bastano.
@@ -100,8 +101,11 @@ final class Quaderno {
     /// Gli intervalli delle scatole, in secondi. La scatola 0 rientra il giorno dopo: a due ore
     /// (com'era fino al 21/10/2026) una scheda sbagliata tornava quattro volte in un pomeriggio,
     /// prima di tutte le altre, e la carta sembrava sempre la stessa.
-    static let intervalli = [86400, 86400, 3 * 86400, 7 * 86400,
-                             16 * 86400, 35 * 86400, 90 * 86400]
+    /// ⭐ La prima risposta giusta porta a TRE giorni (22/10/2026, Francesco: «continua a non
+    /// registrare i progressi»): a un giorno la scheda indovinata tornava l'indomani identica,
+    /// e un'altra volta ancora prima di salire, e sembrava che la risposta non fosse contata.
+    static let intervalli = [86400, 3 * 86400, 7 * 86400, 16 * 86400,
+                             35 * 86400, 90 * 86400, 180 * 86400]
 
     static var progressi: URL { Casa.cartella.appendingPathComponent("spagnolo") }
     static var diario: URL { Casa.cartella.appendingPathComponent("spagnolo-diario") }
@@ -169,8 +173,14 @@ final class Quaderno {
                 ? maiViste(adesso).filter { $0.tipo == .ripeti || $0.tipo == .traduci }
                 : []
             let domanda = schede.filter { $0.tipo == .parla && (ricordi[$0.id]?.scadenza ?? 0) <= adesso }
-            if let s = (scadute + nuoveVoce.prefix(3) + domanda).first(where: { $0.tipo.aVoce }) { return s }
+            let prima = ripassiDiFila >= 1 ? Array(nuoveVoce.prefix(3)) + scadute : scadute + nuoveVoce.prefix(3)
+            if let s = (prima + domanda).first(where: { $0.tipo.aVoce }) { return s }
         }
+        // ripasso e novità si ALTERNANO (22/10/2026): prima il ripasso passava sempre davanti, e
+        // con una scheda scaduta a ogni promemoria le nuove ⛔ entravano più — 17 schede su 785
+        // in tre giorni, sempre quelle
+        if ripassiDiFila >= 1, nuoveOggi < nuoveAlGiorno,
+           let s = variata(Array(maiViste(adesso).prefix(10))) { return s }
         if let s = variata(scadute) { return s }
 
         if nuoveOggi < nuoveAlGiorno {
@@ -215,7 +225,8 @@ final class Quaderno {
     func segna(_ s: Scheda, _ esito: Esito, trascritto: String = "",
                adesso: Int = Int(Date().timeIntervalSince1970)) {
         var r = ricordi[s.id] ?? Ricordo()
-        if r.viste == 0 && s.tipo != .parla { nuoveOggi += 1 }
+        if r.viste == 0 && s.tipo != .parla { nuoveOggi += 1; ripassiDiFila = 0 }
+        else if s.tipo != .parla { ripassiDiFila += 1 }
         r.viste += 1
         ultimoTipo = s.tipo
         senzaVoce = s.tipo.aVoce ? 0 : senzaVoce + 1
@@ -225,9 +236,7 @@ final class Quaderno {
         case .sbagliato: r.scatola = 0
         case .libero:    r.scatola = 0                       // le domande personali girano
         }
-        // la scatola 0 dopo una risposta giusta vuol dire «la prima volta»: si rivede domani
-        let passo = (esito == .giusto && r.scatola == 1) ? 86400 : Quaderno.intervalli[r.scatola]
-        r.scadenza = adesso + (s.tipo == .parla ? 3 * 86400 : passo)
+        r.scadenza = adesso + (s.tipo == .parla ? 3 * 86400 : Quaderno.intervalli[r.scatola])
         ricordi[s.id] = r
         salva()
         if s.tipo.aVoce && !trascritto.isEmpty { annotaDiario(s, trascritto, esito) }
@@ -238,7 +247,7 @@ final class Quaderno {
     /// promemoria dopo riproponeva la stessa: il 20/10 otto «saltato» di fila sulla stessa carta.
     func rinvia(_ s: Scheda, adesso: Int = Int(Date().timeIntervalSince1970)) {
         var r = ricordi[s.id] ?? Ricordo()
-        let quando = adesso + (r.viste == 0 ? 86400 : 4 * 3600)
+        let quando = adesso + 86400   // anche una già vista: a 4 ore tornava nello stesso pomeriggio (22/10)
         guard r.scadenza < quando else { return }
         r.scadenza = quando
         ricordi[s.id] = r
