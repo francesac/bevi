@@ -127,6 +127,9 @@ final class Gocce: NSView {
 final class BottonePieno: NSButton {
     private var dentro = false
     private var premuto = false
+    /// Il colore del bottone; la carta dello spagnolo lo vuole arancio, con l'ombra sotto.
+    var fondo = Colori.acqua { didSet { tinta() } }
+    var ombra: NSColor? { didSet { tinta() } }
 
     init(_ testo: String, azione: Selector, bersaglio: AnyObject) {
         super.init(frame: .zero)
@@ -157,10 +160,18 @@ final class BottonePieno: NSButton {
     override func mouseDown(with e: NSEvent)    { premuto = true; tinta(); super.mouseDown(with: e)
                                                   premuto = false; tinta() }
     private func tinta() {
-        let colore = premuto ? Colori.acqua.blended(withFraction: 18.0/100, of: .black)!
-                   : dentro  ? Colori.acqua.blended(withFraction: 12.0/100, of: .white)!
-                   : Colori.acqua
+        let colore = premuto ? fondo.blended(withFraction: 18.0/100, of: .black)!
+                   : dentro  ? fondo.blended(withFraction: 12.0/100, of: .white)!
+                   : fondo
         layer?.backgroundColor = colore.cgColor
+        // l'ombra piena sotto il bordo, da tasto vero: premuto, il tasto ci scende sopra
+        if let ombra {
+            layer?.masksToBounds = false
+            layer?.shadowColor = ombra.cgColor
+            layer?.shadowOpacity = 1
+            layer?.shadowRadius = 0
+            layer?.shadowOffset = CGSize(width: 0, height: premuto ? -1 : -4)
+        }
     }
 }
 
@@ -169,6 +180,11 @@ final class Pillola: NSButton {
     var scelta = false { didSet { tinta() } }
     private var dentro = false
     let valore: Int
+    /// spenta, sotto il mouse, accesa · e i tre inchiostri. La carta dello spagnolo li cambia.
+    var fondi = (Colori.pillola, Colori.pillolaSu, Colori.acqua) { didSet { tinta() } }
+    var inchiostri = (Colori.tenue, Colori.testo, Colori.scuro) { didSet { tinta() } }
+    var carattere: (CGFloat) -> NSFont = { NSFont.systemFont(ofSize: $0) }
+    var corpo: CGFloat = 12 { didSet { tinta() } }
 
     init(_ testo: String, valore: Int, azione: Selector, bersaglio: AnyObject) {
         self.valore = valore
@@ -200,15 +216,15 @@ final class Pillola: NSButton {
     override func mouseExited(with e: NSEvent)  { dentro = false; tinta() }
 
     private func tinta() {
-        let fondo = scelta ? Colori.acqua : (dentro ? Colori.pillolaSu : Colori.pillola)
-        let inchiostro = scelta ? Colori.scuro : (dentro ? Colori.testo : Colori.tenue)
+        let fondo = scelta ? fondi.2 : (dentro ? fondi.1 : fondi.0)
+        let inchiostro = scelta ? inchiostri.2 : (dentro ? inchiostri.1 : inchiostri.0)
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 18.0/100
             ctx.timingFunction = curva
             layer?.backgroundColor = fondo.cgColor
         }
         attributedTitle = NSAttributedString(string: title, attributes: [
-            .font: NSFont.systemFont(ofSize: 12, weight: scelta ? .semibold : .regular),
+            .font: scelta ? NSFont.systemFont(ofSize: corpo, weight: .semibold) : carattere(corpo),
             .foregroundColor: inchiostro,
         ])
     }
@@ -292,6 +308,9 @@ final class Gruppo {
 final class TestoCliccabile: NSButton {
     private var dentro = false
     private let etichetta: String
+    /// a riposo e sotto il mouse
+    var inchiostri = (Colori.tenue, Colori.testo) { didSet { tinta() } }
+    var carattere = NSFont.systemFont(ofSize: 12) { didSet { tinta() } }
 
     init(_ testo: String, azione: Selector, bersaglio: AnyObject) {
         etichetta = testo
@@ -317,8 +336,8 @@ final class TestoCliccabile: NSButton {
 
     private func tinta() {
         attributedTitle = NSAttributedString(string: etichetta, attributes: [
-            .font: NSFont.systemFont(ofSize: 12),
-            .foregroundColor: dentro ? Colori.testo : Colori.tenue,
+            .font: carattere,
+            .foregroundColor: dentro ? inchiostri.1 : inchiostri.0,
         ])
     }
 }

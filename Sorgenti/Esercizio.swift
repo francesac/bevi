@@ -9,6 +9,9 @@
 //  clic ovunque (o Invio, o Esc) spegne tutto. Il voto si segna alla chiusura, così
 //  «l'avevo detta giusta» può ancora correggerlo.
 //
+//  🎨 31/10: due stanze. In cima la fascia Bevi, che dice solo di bere (⛔ conti di bicchieri:
+//  «senza conteggio, senza niente»); sotto lo spagnolo, con la tavolozza sua (Tinte.swift).
+//
 //  ⭐ Non resta mai sopra una chiamata: se la webcam si accende, o se non sei davanti al
 //  Mac da 5 minuti, se ne va da sola senza segnare niente.
 
@@ -36,8 +39,9 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
     /// risponde da sola dopo un secondo e mezzo, così il resoconto si guarda senza mani.
     static var rispostaDiProva: String?
 
-    /// `bevi`: la riga del bicchiere («bicchiere 5 di 8 · sono le 14:16»). Con lei la carta È il
-    /// promemoria: il «Bevi» sta sotto l'esercizio, nello stesso riquadro, col suono del cartello.
+    /// `bevi`: se c'è, la carta È il promemoria: la fascia Bevi sta in cima, nello stesso riquadro,
+    /// col suono del cartello. Il testo che porta (il bicchiere, l'ora) ⛔ si mostra più: dal 31/10
+    /// la fascia dice solo di bere.
     /// Torna `false` se la carta non si apre (un'altra aperta, nessuna scheda): chi chiama mostra
     /// allora il cartello da solo, perché il bicchiere non resti senza avviso.
     @discardableResult
@@ -86,7 +90,7 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
     private let bottone: BottonePieno
     private let secondari = NSStackView()
     private let zonaEsito = NSStackView()
-    private let ascolto = scritta("", corpo: 14, colore: Colori.tenue)
+    private let ascolto = scritta("", corpo: 14, colore: Tinte.tenue)
 
     private init(_ s: Scheda, piede: String, voce: Bool) {
         scheda = s
@@ -120,42 +124,61 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
         }
         finestra.allInvio = { [weak self] in self?.principale() }
 
-        let carta = Carta(sfuma: [Colori.cimaCarta, Colori.fondoCarta], raggio: 16)
+        let carta = Carta(tinta: Tinte.nibbio, raggio: 22)
+        carta.layer?.borderWidth = 0
+        carta.layer?.masksToBounds = true          // la fascia Bevi segue gli angoli tondi
         carta.translatesAutoresizingMaskIntoConstraints = false
         finestra.contentView = carta
+
+        // ① in cima la fascia Bevi, se la carta è il promemoria · ② sotto lo spagnolo
+        let stanza = NSView()
+        stanza.translatesAutoresizingMaskIntoConstraints = false
+        let pila = NSStackView(views: bevi != nil ? [fasciaBevi(), stanza] : [stanza])
+        pila.orientation = .vertical
+        pila.spacing = 0
+        pila.translatesAutoresizingMaskIntoConstraints = false
+        carta.addSubview(pila)
+        for v in pila.arrangedSubviews { v.widthAnchor.constraint(equalTo: pila.widthAnchor).isActive = true }
 
         colonna.orientation = .vertical
         colonna.alignment = .leading
         colonna.spacing = 10
         colonna.translatesAutoresizingMaskIntoConstraints = false
-        carta.addSubview(colonna)
+        stanza.addSubview(colonna)
         NSLayoutConstraint.activate([
             carta.widthAnchor.constraint(equalToConstant: larghezza),
-            colonna.topAnchor.constraint(equalTo: carta.topAnchor, constant: margine - 4),
-            colonna.leadingAnchor.constraint(equalTo: carta.leadingAnchor, constant: margine),
-            colonna.trailingAnchor.constraint(equalTo: carta.trailingAnchor, constant: -margine),
-            colonna.bottomAnchor.constraint(equalTo: carta.bottomAnchor, constant: -margine + 6),
+            pila.topAnchor.constraint(equalTo: carta.topAnchor),
+            pila.leadingAnchor.constraint(equalTo: carta.leadingAnchor),
+            pila.trailingAnchor.constraint(equalTo: carta.trailingAnchor),
+            pila.bottomAnchor.constraint(equalTo: carta.bottomAnchor),
+            colonna.topAnchor.constraint(equalTo: stanza.topAnchor, constant: 22),
+            colonna.leadingAnchor.constraint(equalTo: stanza.leadingAnchor, constant: margine),
+            colonna.trailingAnchor.constraint(equalTo: stanza.trailingAnchor, constant: -margine),
+            colonna.bottomAnchor.constraint(equalTo: stanza.bottomAnchor, constant: -22),
         ])
 
-        // testa: che esercizio è · «Salta»
+        // testa: che esercizio è, nel cartellino granato · «Salta»
         let testa = NSStackView()
         testa.orientation = .horizontal
-        let tipo = scritta("ESPAÑOL  ·  \(scheda.tipo.etichetta)", corpo: 10.5, peso: .semibold,
-                           colore: Colori.acqua, spaziatura: 1.2)
+        let tipo = cartellino("ESPAÑOL  ·  \(scheda.tipo.etichetta.uppercased())")
         let salta = TestoCliccabile("Salta", azione: #selector(salta), bersaglio: self)
+        salta.inchiostri = (Tinte.tenue, Tinte.neve)
+        salta.carattere = Caratteri.tondo(13, .medium)
         testa.addArrangedSubview(tipo)
         testa.addArrangedSubview(NSView())
         testa.addArrangedSubview(salta)
         aggiungi(testa, pieno: true)
+        colonna.setCustomSpacing(16, after: testa)
 
-        aggiungi(scritta(consegnaVera, corpo: 12, colore: Colori.tenue))
+        aggiungi(testo(consegnaVera, Caratteri.tondo(13, .medium), Tinte.tenue))
         colonna.setCustomSpacing(4, after: colonna.arrangedSubviews.last!)
-        aggiungi(aCapo(scheda.domanda, corpo: scheda.domanda.count > 60 ? 18 : 22, peso: .semibold),
-                 pieno: true)
-        if let a = scheda.aiuto { aggiungi(scritta(a, corpo: 13, colore: Colori.tenue)) }
+        aggiungi(domanda(), pieno: true)
+        colonna.setCustomSpacing(4, after: colonna.arrangedSubviews.last!)
+        if let a = scheda.aiuto { aggiungi(testo(a, Caratteri.tondo(13), Tinte.tenue)) }
         if scheda.tipo == .parla, let n = scheda.nota {
-            aggiungi(aCapo(n, corpo: 12, colore: Colori.tenue), pieno: true)
+            aggiungi(aCapo(n, corpo: 12.5, colore: Tinte.tenue), pieno: true)
         }
+        colonna.setCustomSpacing(14, after: colonna.arrangedSubviews.last!)
 
         rispostaPerTipo()
 
@@ -171,34 +194,26 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
         fondo.orientation = .horizontal
         fondo.spacing = 16
         bottone.widthAnchor.constraint(greaterThanOrEqualToConstant: 130).isActive = true
+        bottone.fondo = Tinte.toro
+        bottone.ombra = Tinte.granato
+        bottone.layer?.cornerRadius = 14
+        bottone.constraints.filter { $0.firstAttribute == .height }.forEach { $0.constant = 44 }
         aggiungi(fondo)
         colonna.setCustomSpacing(16, after: zonaEsito)
 
-        aggiungi(filo(), pieno: true)
+        colonna.setCustomSpacing(20, after: fondo)
+        let linea = filo()
+        linea.layer?.backgroundColor = Tinte.incavo.cgColor
+        aggiungi(linea, pieno: true)
+        colonna.setCustomSpacing(14, after: linea)
         let numeri = Progressi(Quaderno.condiviso.numeri())
         progressi = numeri
-        if let b = bevi {
-            // il promemoria dell'acqua, sotto l'esercizio: lo stesso avviso, ⛔ un secondo dopo il primo
-            let goccia = scritta("💧", corpo: 26)
-            let parole = NSStackView(views: [
-                scritta("Bevi", corpo: 22, peso: .bold, colore: Colori.acqua),
-                scritta(b, corpo: 12, colore: Colori.tenue),
-            ])
-            parole.orientation = .vertical
-            parole.alignment = .leading
-            parole.spacing = 0
-            let riga = NSStackView(views: [goccia, parole, NSView(), numeri])
-            riga.orientation = .horizontal
-            riga.alignment = .centerY
-            riga.spacing = 12
-            colonna.setCustomSpacing(14, after: colonna.arrangedSubviews.last!)
-            aggiungi(riga, pieno: true)
-        } else {
-            let riga = NSStackView(views: [scritta(piedeTesto, corpo: 11, colore: Colori.tenue), NSView(), numeri])
-            riga.orientation = .horizontal
-            riga.alignment = .centerY
-            aggiungi(riga, pieno: true)
-        }
+        // da solo (senza la fascia Bevi) il piede dice anche da dove viene la carta
+        let riga = NSStackView(views: bevi != nil ? [numeri, NSView()]
+                                                  : [numeri, NSView(), testo(piedeTesto, Caratteri.tondo(11.5), Tinte.tenue)])
+        riga.orientation = .horizontal
+        riga.alignment = .firstBaseline
+        aggiungi(riga, pieno: true)
 
         impostaPrimoStato()
         posa(prima: true)
@@ -282,35 +297,124 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
     }
 
     private func aCapo(_ t: String, corpo: CGFloat, peso: NSFont.Weight = .regular,
-                       colore: NSColor = Colori.testo) -> NSTextField {
+                       colore: NSColor = Tinte.neve) -> NSTextField {
         let c = NSTextField(wrappingLabelWithString: "")
         c.attributedStringValue = NSAttributedString(string: t, attributes: [
-            .font: NSFont.systemFont(ofSize: corpo, weight: peso), .foregroundColor: colore])
+            .font: Caratteri.tondo(corpo, peso), .foregroundColor: colore])
         c.preferredMaxLayoutWidth = larghezza - 2 * margine
         c.isSelectable = false
         return c
     }
 
+    /// La fascia Bevi: acqua piena, la goccia e la parola. ⛔ numeri, ⛔ orari: solo l'invito.
+    private func fasciaBevi() -> NSView {
+        let fascia = NSView()
+        fascia.wantsLayer = true
+        fascia.layer?.backgroundColor = Tinte.acqua.cgColor
+        let parola = testo("Bevi.", Caratteri.serif(48), Tinte.nibbio)
+        let sotto = testo("Un bicchiere d'acqua, adesso.", Caratteri.tondo(15, .medium),
+                          Tinte.nibbio.withAlphaComponent(82.0/100))
+        let parole = NSStackView(views: [parola, sotto])
+        parole.orientation = .vertical
+        parole.alignment = .leading
+        parole.spacing = 2
+        let goccia = Goccia()
+        let riga = NSStackView(views: [goccia, parole])
+        riga.orientation = .horizontal
+        riga.alignment = .centerY
+        riga.spacing = 18
+        riga.translatesAutoresizingMaskIntoConstraints = false
+        fascia.addSubview(riga)
+        NSLayoutConstraint.activate([
+            riga.topAnchor.constraint(equalTo: fascia.topAnchor, constant: 24),
+            riga.bottomAnchor.constraint(equalTo: fascia.bottomAnchor, constant: -22),
+            riga.leadingAnchor.constraint(equalTo: fascia.leadingAnchor, constant: margine),
+        ])
+        return fascia
+    }
+
+    /// Il cartellino granato in cima allo spagnolo: che esercizio è.
+    private func cartellino(_ t: String) -> NSView {
+        let fondo = NSView()
+        fondo.wantsLayer = true
+        fondo.layer?.backgroundColor = Tinte.granato.cgColor
+        fondo.layer?.cornerRadius = 11
+        let s = testo(t, Caratteri.tondo(10.5, .bold), Tinte.neve, spaziatura: 1.4)
+        s.translatesAutoresizingMaskIntoConstraints = false
+        fondo.addSubview(s)
+        NSLayoutConstraint.activate([
+            fondo.heightAnchor.constraint(equalToConstant: 22),
+            s.leadingAnchor.constraint(equalTo: fondo.leadingAnchor, constant: 10),
+            s.trailingAnchor.constraint(equalTo: fondo.trailingAnchor, constant: -10),
+            s.centerYAnchor.constraint(equalTo: fondo.centerYAnchor),
+        ])
+        return fondo
+    }
+
+    /// La domanda, grande: il buco «___» si vede in arancio, è lì che si gioca.
+    private func domanda() -> NSTextField {
+        let corpo: CGFloat = scheda.domanda.count > 60 ? 19 : 25
+        let testo = NSMutableAttributedString(string: scheda.domanda, attributes: [
+            .font: Caratteri.tondo(corpo, .bold), .foregroundColor: Tinte.neve])
+        var da = scheda.domanda.startIndex
+        while let r = scheda.domanda.range(of: "___", range: da..<scheda.domanda.endIndex) {
+            testo.addAttribute(.foregroundColor, value: Tinte.toro, range: NSRange(r, in: scheda.domanda))
+            da = r.upperBound
+        }
+        let c = NSTextField(wrappingLabelWithString: "")
+        c.attributedStringValue = testo
+        c.preferredMaxLayoutWidth = larghezza - 2 * margine
+        c.isSelectable = false
+        return c
+    }
+
+    /// Un testo su una riga col SUO carattere: `scritta` conosce solo quello di sistema, e un
+    /// `.font` messo dopo lo scavalca l'attributo già scritto (31/10: «Bevi.» usciva piccolo).
+    private func testo(_ t: String, _ f: NSFont, _ c: NSColor, spaziatura: CGFloat = 0) -> NSTextField {
+        let campo = NSTextField(labelWithString: t)
+        campo.attributedStringValue = NSAttributedString(string: t, attributes: [
+            .font: f, .foregroundColor: c, .kern: spaziatura])
+        campo.lineBreakMode = .byTruncatingTail
+        return campo
+    }
+
+    private func spagnola(_ p: Pillola) {
+        p.fondi = (Tinte.rilievo, Tinte.incavo, Tinte.toro)
+        p.inchiostri = (Tinte.neve.withAlphaComponent(85.0/100), Tinte.neve, Tinte.nibbio)
+        p.carattere = { Caratteri.tondo($0, .medium) }
+        p.corpo = 14
+        p.layer?.cornerRadius = 12
+    }
+
+    private func link(_ t: String, _ azione: Selector) -> TestoCliccabile {
+        let l = TestoCliccabile(t, azione: azione, bersaglio: self)
+        l.inchiostri = (Tinte.tenue, Tinte.neve)
+        l.carattere = Caratteri.tondo(13, .medium)
+        return l
+    }
+
     private func rispostaPerTipo() {
         switch scheda.tipo {
         case .parola, .completa:
-            let fondo = Carta(tinta: Colori.pillola, raggio: 10)
+            let fondo = Carta(tinta: Tinte.rilievo.withAlphaComponent(55.0/100), raggio: 14)
+            fondo.layer?.borderWidth = 2
+            fondo.layer?.borderColor = Tinte.bordo.cgColor
             let f = NSTextField()
             f.isBezeled = false
             f.drawsBackground = false
             f.focusRingType = .none
-            f.font = .systemFont(ofSize: 17)
-            f.textColor = Colori.testo
+            f.font = Caratteri.tondo(18, .medium)
+            f.textColor = Tinte.neve
             f.placeholderAttributedString = NSAttributedString(
                 string: "scrivi e premi Invio",
-                attributes: [.font: NSFont.systemFont(ofSize: 15), .foregroundColor: Colori.tenue])
+                attributes: [.font: Caratteri.tondo(16), .foregroundColor: Tinte.tenue])
             f.delegate = self
             f.translatesAutoresizingMaskIntoConstraints = false
             fondo.addSubview(f)
             NSLayoutConstraint.activate([
-                fondo.heightAnchor.constraint(equalToConstant: 40),
-                f.leadingAnchor.constraint(equalTo: fondo.leadingAnchor, constant: 12),
-                f.trailingAnchor.constraint(equalTo: fondo.trailingAnchor, constant: -12),
+                fondo.heightAnchor.constraint(equalToConstant: 48),
+                f.leadingAnchor.constraint(equalTo: fondo.leadingAnchor, constant: 16),
+                f.trailingAnchor.constraint(equalTo: fondo.trailingAnchor, constant: -16),
                 f.centerYAnchor.constraint(equalTo: fondo.centerYAnchor),
             ])
             campo = f
@@ -319,11 +423,12 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
             let elenco = NSStackView()
             elenco.orientation = .vertical
             elenco.alignment = .leading
-            elenco.spacing = 6
+            elenco.spacing = 8
             for (i, o) in (scheda.opzioni ?? [scheda.es]).enumerated() {
                 let p = Pillola(o, valore: i, azione: #selector(sceglie(_:)), bersaglio: self)
+                spagnola(p)
                 p.removeConstraints(p.constraints.filter { $0.firstAttribute == .height })
-                p.heightAnchor.constraint(equalToConstant: 32).isActive = true
+                p.heightAnchor.constraint(equalToConstant: 40).isActive = true
                 opzioni.append(p)
                 elenco.addArrangedSubview(p)
                 p.widthAnchor.constraint(equalTo: elenco.widthAnchor).isActive = true
@@ -348,8 +453,7 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
         case .ripeti, .traduci, .parla:
             titolo(aVoceVera ? "🎙  Parla" : "Mostra la soluzione")
             if scheda.tipo == .ripeti {
-                secondari.addArrangedSubview(TestoCliccabile("Riascolta", azione: #selector(riascolta),
-                                                             bersaglio: self))
+                secondari.addArrangedSubview(link("Riascolta", #selector(riascolta)))
             }
         }
     }
@@ -358,7 +462,7 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
         bottone.isHidden = false
         bottone.title = t
         bottone.attributedTitle = NSAttributedString(string: "  \(t)  ", attributes: [
-            .font: NSFont.systemFont(ofSize: 13, weight: .semibold), .foregroundColor: Colori.scuro])
+            .font: Caratteri.tondo(15, .heavy), .foregroundColor: Tinte.nibbio])
     }
 
     /// Solo per il collaudo: la carta com'è adesso, in PNG, nella cartella `BEVI_SCATTI`.
@@ -370,7 +474,7 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
             .write(to: URL(fileURLWithPath: cartella).appendingPathComponent("\(nome).png"))
     }
 
-    /// Il velo di uno schermo: la Scrivania sfocata e tinta di blu profondo, come il cartello.
+    /// Il velo di uno schermo: la Scrivania sfocata e tinta del marrone della carta.
     /// I clic che ci cadono sopra li raccoglie il guardiano dei clic (in `apri`).
     private func velo(_ schermo: NSScreen) -> NSWindow {
         let cornice = schermo.frame
@@ -395,10 +499,7 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
         tinta.autoresizingMask = [.width, .height]
         let sfumatura = CAGradientLayer()
         sfumatura.frame = radice.bounds
-        sfumatura.colors = [
-            NSColor(srgbRed: 13.0/255, green: 48.0/255, blue: 84.0/255, alpha: 90.0/100).cgColor,
-            NSColor(srgbRed:  5.0/255, green: 18.0/255, blue: 36.0/255, alpha: 94.0/100).cgColor,
-        ]
+        sfumatura.colors = [Tinte.veloSu.cgColor, Tinte.veloGiu.cgColor]
         sfumatura.startPoint = CGPoint(x: 1.0/2, y: 1)
         sfumatura.endPoint   = CGPoint(x: 1.0/2, y: 0)
         tinta.layer = sfumatura
@@ -483,17 +584,17 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
             self.detto = ""
             self.titolo("■  Ho finito")
             self.ascolto.isHidden = false
-            self.scriviAscolto("ti ascolto…", colore: Colori.tenue)
+            self.scriviAscolto("ti ascolto…", colore: Tinte.tenue)
             self.posa()
             self.inizioAscolto = Date()
             self.ultimoCambio = Date()
             self.orecchio.ascolta(mentre: { [weak self] testo in
                 guard let self, self.inAscolto else { return }
                 if testo != self.detto { self.detto = testo; self.ultimoCambio = Date() }
-                self.scriviAscolto(testo.isEmpty ? "ti ascolto…" : "«\(testo)»", colore: Colori.testo)
+                self.scriviAscolto(testo.isEmpty ? "ti ascolto…" : "«\(testo)»", colore: Tinte.neve)
             }, errore: { [weak self] messaggio in
                 self?.inAscolto = false
-                self?.scriviAscolto(messaggio, colore: Colori.tenue)
+                self?.scriviAscolto(messaggio, colore: Tinte.tenue)
                 self?.titolo("Mostra la soluzione")
                 self?.sorveglia?.invalidate()
             })
@@ -513,7 +614,7 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
 
     private func scriviAscolto(_ t: String, colore: NSColor) {
         ascolto.attributedStringValue = NSAttributedString(string: t, attributes: [
-            .font: NSFont.systemFont(ofSize: 14), .foregroundColor: colore])
+            .font: Caratteri.tondo(14), .foregroundColor: colore])
         posa()
     }
 
@@ -526,7 +627,7 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
             guard let self else { return }
             let testo = finale.isEmpty ? self.detto : finale
             guard !testo.isEmpty else {
-                self.scriviAscolto("Non ti ho sentito. Riprova, un po' più vicino al Mac.", colore: Colori.tenue)
+                self.scriviAscolto("Non ti ho sentito. Riprova, un po' più vicino al Mac.", colore: Tinte.tenue)
                 self.titolo("🎙  Riprova")
                 return
             }
@@ -539,7 +640,7 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
 
     private func senzaMicrofono() {
         scriviAscolto("Il microfono è spento per Bevi: si accende in Impostazioni di Sistema › Privacy › Microfono.",
-                      colore: Colori.tenue)
+                      colore: Tinte.tenue)
         ascolto.isHidden = false
         titolo("Mostra la soluzione")
         posa()
@@ -590,10 +691,11 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
         let dopo = Quaderno.dopo(prima, scheda, e, adesso: Int(Date().timeIntervalSince1970))
         let scala = Scala(prima: prima.scatola, dopo: dopo.scatola, esito: e)
         let (testo, colore, peso) = scala.didascalia
-        let gruppo = NSStackView(views: [scala, scritta(testo, corpo: 11, peso: peso, colore: colore)])
+        let dida = self.testo(testo, Caratteri.tondo(12, peso), colore)
+        let gruppo = NSStackView(views: [scala, dida])
         gruppo.orientation = .vertical
         gruppo.alignment = .trailing
-        gruppo.spacing = 5
+        gruppo.spacing = 7
         DispatchQueue.main.async { scala.accendi() }
         return gruppo
     }
@@ -619,12 +721,13 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
         if !giudichi {
             let (parola, colore): (String, NSColor)
             switch v.esito {
-            case .giusto:    (parola, colore) = ("¡Muy bien!", Colori.verde)
-            case .quasi:     (parola, colore) = ("Casi — quasi giusta", Colori.acqua)
-            case .sbagliato: (parola, colore) = ("No, si dice così", Colori.corallo)
-            case .libero:    (parola, colore) = ("Salvata nel diario", Colori.verde)
+            // l'arancio è il premio; chi sbaglia prende l'acqua, ⛔ il rosso: si impara, non si punisce
+            case .giusto:    (parola, colore) = ("¡Muy bien!", Tinte.toro)
+            case .quasi:     (parola, colore) = ("Casi — quasi giusta", Tinte.neve)
+            case .sbagliato: (parola, colore) = ("No, si dice così", Tinte.acqua)
+            case .libero:    (parola, colore) = ("Salvata nel diario", Tinte.toro)
             }
-            let titolo = scritta(parola, corpo: 16, peso: .semibold, colore: colore)
+            let titolo = testo(parola, Caratteri.serif(26, corsivo: true), colore)
             if let scala = scalaDellaScheda(v.esito) {
                 let riga = NSStackView(views: [titolo, NSView(), scala])
                 riga.orientation = .horizontal
@@ -638,30 +741,30 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
         if !tua.isEmpty, v.esito != .giusto || Correttore.pulisci(tua) != Correttore.pulisci(scheda.es) {
             let coda = v.esito == .giusto ? ": va bene anche così" : ""
             zonaEsito.addArrangedSubview(aCapo("\(verbo) «\(tua)»\(coda)", corpo: 13.5,
-                                               colore: v.esito == .sbagliato ? Colori.corallo : Colori.tenue))
+                                               colore: v.esito == .sbagliato ? Tinte.acqua : Tinte.tenue))
         }
         if v.esito == .quasi && !giudichi && v.messaggio != scheda.es {
-            zonaEsito.addArrangedSubview(aCapo(v.messaggio, corpo: 13, colore: Colori.tenue))
+            zonaEsito.addArrangedSubview(aCapo(v.messaggio, corpo: 13, colore: Tinte.tenue))
         }
         // ③ la forma giusta, grande
         if v.esito == .libero {
-            zonaEsito.addArrangedSubview(aCapo("Per esempio: \(scheda.es)", corpo: 18, peso: .semibold))
+            zonaEsito.addArrangedSubview(aCapo("Per esempio: \(scheda.es)", corpo: 18, peso: .bold))
         } else {
-            zonaEsito.addArrangedSubview(aCapo(soluzione, corpo: 20, peso: .semibold))
+            zonaEsito.addArrangedSubview(aCapo(soluzione, corpo: 21, peso: .bold))
         }
         // ④ cosa vuol dire
         if let it = inItaliano, !it.isEmpty {
-            zonaEsito.addArrangedSubview(aCapo(it, corpo: 15, colore: Colori.testo.withAlphaComponent(0.82)))
+            zonaEsito.addArrangedSubview(aCapo(it, corpo: 15, colore: Tinte.neve.withAlphaComponent(82.0/100)))
         }
         // ⑤ il perché
         if let n = scheda.nota, scheda.tipo != .parla {
-            zonaEsito.addArrangedSubview(aCapo(n, corpo: 12.5, colore: Colori.tenue))
+            zonaEsito.addArrangedSubview(aCapo(n, corpo: 12.5, colore: Tinte.tenue))
         }
         for riga in zonaEsito.arrangedSubviews {
             riga.widthAnchor.constraint(equalTo: zonaEsito.widthAnchor).isActive = true
         }
         if zonaEsito.arrangedSubviews.count > 1 {
-            zonaEsito.setCustomSpacing(10, after: zonaEsito.arrangedSubviews[0])
+            zonaEsito.setCustomSpacing(12, after: zonaEsito.arrangedSubviews[0])
         }
         zonaEsito.isHidden = false
 
@@ -672,20 +775,22 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
             for (t, e) in [("La sapevo", Esito.giusto), ("Quasi", .quasi), ("No", .sbagliato)] {
                 let p = Pillola(t, valore: e == .giusto ? 0 : (e == .quasi ? 1 : 2),
                                 azione: #selector(voto(_:)), bersaglio: self)
+                spagnola(p)
+                p.removeConstraints(p.constraints.filter { $0.firstAttribute == .height })
+                p.heightAnchor.constraint(equalToConstant: 36).isActive = true
                 secondari.addArrangedSubview(p)
             }
         } else {
             titolo("Avanti")
             if scheda.tipo != .parla {
-                secondari.addArrangedSubview(TestoCliccabile("Riascolta", azione: #selector(riascoltaSoluzione),
-                                                             bersaglio: self))
+                secondari.addArrangedSubview(link("Riascolta", #selector(riascoltaSoluzione)))
             }
             // il riconoscimento sbaglia anche lui: l'ultima parola sul parlato è tua
             if scheda.tipo.aVoce && scheda.tipo != .parla && v.esito != .giusto {
-                secondari.addArrangedSubview(TestoCliccabile("L'avevo detta giusta",
-                                                             azione: #selector(avevoRagione), bersaglio: self))
+                secondari.addArrangedSubview(link("L'avevo detta giusta", #selector(avevoRagione)))
             }
-            secondari.addArrangedSubview(scritta("clic ovunque per chiudere", corpo: 11, colore: Colori.tenue))
+            let invito = testo("clic ovunque per chiudere", Caratteri.tondo(11.5), Tinte.tenue.withAlphaComponent(70.0/100))
+            secondari.addArrangedSubview(invito)
         }
         posa()
 

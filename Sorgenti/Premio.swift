@@ -4,6 +4,7 @@ import AppKit
 // 31/10, Francesco: «rendilo visivamente più interessante e rewarding». Un gesto solo, lo stesso
 // dappertutto: ciò che si guadagna SI ACCENDE (cresce da sinistra o pulsa, con la `curva` di casa)
 // e lascia un alone che si spegne piano. ⛔ rimbalzi, ⛔ coriandoli: è una carta che premia, non una slot.
+// I colori sono quelli della carta (Tinte.swift): ciò che si guadagna è arancio Toro, il fatto è acqua.
 
 /// Quanto manca al prossimo ripasso, a parole.
 func fraQuanto(_ secondi: Int) -> String {
@@ -20,11 +21,11 @@ func fraQuanto(_ secondi: Int) -> String {
 
 /// La scala di UNA scheda: sei tappe, dal ripasso fra tre giorni a quello fra sei mesi. Dalla
 /// terza la scheda è «saputa», e lì c'è più aria fra i gradini. Alla risposta giusta la tappa
-/// nuova si accende di verde; a quella sbagliata le tappe fatte si spengono.
+/// nuova si accende d'arancio; a quella sbagliata le tappe fatte si spengono.
 final class Scala: NSView {
     static let tappe = 6
-    private let lato = CGSize(width: 26, height: 7)
-    private let passo: CGFloat = 4, soglia: CGFloat = 12
+    private let lato = CGSize(width: 28, height: 8)
+    private let passo: CGFloat = 5, soglia: CGFloat = 13
 
     private let prima: Int, dopo: Int, esito: Esito
     private var pieni: [CALayer] = []
@@ -41,7 +42,7 @@ final class Scala: NSView {
             let fondo = CALayer()
             fondo.frame = CGRect(x: x, y: 0, width: lato.width, height: lato.height)
             fondo.cornerRadius = lato.height / 2
-            fondo.backgroundColor = Colori.pillolaSu.cgColor
+            fondo.backgroundColor = Tinte.incavo.cgColor
             layer?.addSublayer(fondo)
 
             let pieno = CALayer()
@@ -68,8 +69,8 @@ final class Scala: NSView {
         for (i, p) in pieni.enumerated() {
             let tappa = i + 1
             p.isHidden = tappa > max(prima, dopo)
-            p.backgroundColor = (esito == .sbagliato ? Colori.corallo : Colori.acqua).cgColor
-            if tappa > prima { p.backgroundColor = Colori.verde.cgColor }
+            p.backgroundColor = Tinte.acqua.cgColor
+            if tappa > prima { p.backgroundColor = Tinte.toro.cgColor }
         }
     }
 
@@ -96,8 +97,8 @@ final class Scala: NSView {
         cresce.fillMode = .backwards
         p.add(cresce, forKey: "cresce")
 
-        p.shadowColor = Colori.verde.cgColor
-        p.shadowOpacity = 35.0/100
+        p.shadowColor = Tinte.toro.cgColor
+        p.shadowOpacity = 45.0/100
         let alone = CABasicAnimation(keyPath: "shadowOpacity")
         alone.fromValue = 1; alone.toValue = 35.0/100
         alone.beginTime = ora + 4.0/10; alone.duration = 16.0/10; alone.timingFunction = curva
@@ -110,19 +111,19 @@ final class Scala: NSView {
         let quando = fraQuanto(Quaderno.intervalli[max(0, min(dopo, Quaderno.intervalli.count - 1))])
         switch esito {
         case .sbagliato:
-            return (prima > 0 ? "si riparte · torna domani" : "torna domani", Colori.tenue, .regular)
+            return (prima > 0 ? "si riparte · torna domani" : "torna domani", Tinte.acqua, .medium)
         case .quasi:
-            return (prima > 0 ? "resta alla tappa \(prima) · \(quando)" : quando, Colori.tenue, .regular)
+            return (prima > 0 ? "resta alla tappa \(prima) · \(quando)" : quando, Tinte.tenue, .medium)
         default:
-            if dopo == 3 && prima < 3 { return ("Saputa!  ·  \(quando)", Colori.verde, .semibold) }
-            if dopo == prima           { return ("la sai da mesi · \(quando)", Colori.verde, .regular) }
-            return ("tappa \(dopo) di \(Scala.tappe) · \(quando)", Colori.tenue, .regular)
+            if dopo == 3 && prima < 3 { return ("Saputa!  ·  \(quando)", Tinte.toro, .bold) }
+            if dopo == prima           { return ("la sai da mesi · \(quando)", Tinte.toro, .medium) }
+            return ("tappa \(dopo) di \(Scala.tappe) · \(quando)", Tinte.tenue, .medium)
         }
     }
 }
 
-/// I numeri in fondo alla carta: tre colonne, la cifra sopra e cosa conta sotto. Quando una
-/// cifra sale si accende di verde, pulsa una volta e lascia salire un «+1».
+/// I numeri in fondo alla carta: tre coppie, la cifra grande e accanto cosa conta. Quando una
+/// cifra sale si accende d'arancio, pulsa una volta e lascia salire un «+1».
 final class Progressi: NSStackView {
     private final class Cifra {
         let numero = NSTextField(labelWithString: "")
@@ -132,17 +133,17 @@ final class Progressi: NSStackView {
 
         init(_ v: Int, _ testo: String) {
             valore = v
-            numero.font = NSFont.monospacedDigitSystemFont(ofSize: 17, weight: .semibold)
-            numero.textColor = Colori.testo
+            numero.font = Caratteri.tondo(22, .heavy)
+            numero.textColor = Tinte.neve
             numero.stringValue = "\(v)"
             numero.wantsLayer = true
-            etichetta.font = NSFont.systemFont(ofSize: 10.5)
-            etichetta.textColor = Colori.tenue
+            etichetta.font = Caratteri.tondo(12, .medium)
+            etichetta.textColor = Tinte.tenue
             etichetta.stringValue = testo
             colonna = NSStackView(views: [numero, etichetta])
-            colonna.orientation = .vertical
-            colonna.alignment = .centerX
-            colonna.spacing = 0
+            colonna.orientation = .horizontal
+            colonna.alignment = .firstBaseline
+            colonna.spacing = 7
         }
     }
 
@@ -154,8 +155,8 @@ final class Progressi: NSStackView {
         sapute = Cifra(n.sapute, Progressi.nomeSapute(n))
         super.init(frame: .zero)
         orientation = .horizontal
-        alignment = .centerY
-        spacing = 20
+        alignment = .firstBaseline
+        spacing = 34
         for c in [oggi, giuste, sapute] { addArrangedSubview(c.colonna) }
     }
     required init?(coder: NSCoder) { nil }
@@ -174,7 +175,7 @@ final class Progressi: NSStackView {
             c.numero.stringValue = "\(v)"
         }
         guard !saliti.isEmpty else { return }
-        for (c, _) in saliti { c.numero.textColor = Colori.verde }
+        for (c, _) in saliti { c.numero.textColor = Tinte.toro }
         DispatchQueue.main.asyncAfter(deadline: .now() + ritardo) { [weak self] in
             guard let self else { return }
             for (i, (c, quanti)) in saliti.enumerated() {
@@ -200,8 +201,8 @@ final class Progressi: NSStackView {
         // ② il «+1» sale e svanisce, sopra la cifra
         if let carta = window?.contentView {
             let piu = NSTextField(labelWithString: "+\(quanti)")
-            piu.font = NSFont.systemFont(ofSize: 12, weight: .bold)
-            piu.textColor = Colori.verde
+            piu.font = Caratteri.tondo(13, .heavy)
+            piu.textColor = Tinte.toro
             piu.sizeToFit()
             let dove = c.numero.convert(c.numero.bounds, to: carta)
             piu.frame.origin = CGPoint(x: dove.midX - piu.frame.width / 2, y: dove.maxY - 2)
@@ -214,13 +215,13 @@ final class Progressi: NSStackView {
                 piu.animator().alphaValue = 0
             }, completionHandler: { piu.removeFromSuperview() })
         }
-        // ③ il verde si scioglie piano nel bianco
+        // ③ l'arancio si scioglie piano nella neve
         DispatchQueue.main.asyncAfter(deadline: .now() + 14.0/10) {
             let sfuma = CATransition()
             sfuma.type = .fade
             sfuma.duration = 8.0/10
             c.numero.layer?.add(sfuma, forKey: "sfuma")
-            c.numero.textColor = Colori.testo
+            c.numero.textColor = Tinte.neve
         }
     }
 }
