@@ -69,3 +69,86 @@ final class Goccia: NSView {
         riflesso.stroke()
     }
 }
+
+// ── i segni al posto delle parole ────────────────────────────────────────────
+// 31/10, Francesco: «se può essere spiegato senza testo, deve essere spiegato senza testo».
+// Consegne, titoli dell'esito e nomi dei bottoni sono diventati segni: un simbolo, un colore,
+// una parola barrata. Il nome resta nel suggerimento al passaggio del mouse, per chi lo cerca.
+
+/// Un simbolo di sistema (SF Symbols) alla misura e al peso voluti.
+func simbolo(_ nome: String, _ corpo: CGFloat, _ peso: NSFont.Weight = .semibold) -> NSImage? {
+    NSImage(systemSymbolName: nome, accessibilityDescription: nil)?
+        .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: corpo, weight: peso))
+}
+
+/// Un bottone che è solo un segno: tenue a riposo, neve sotto il mouse.
+final class Icona: NSButton {
+    private var dentro = false
+    var inchiostri = (Tinte.tenue, Tinte.neve) { didSet { tinta() } }
+
+    init(_ nome: String, corpo: CGFloat = 17, aiuto: String, azione: Selector, bersaglio: AnyObject) {
+        super.init(frame: .zero)
+        image = simbolo(nome, corpo)
+        imagePosition = .imageOnly
+        isBordered = false
+        toolTip = aiuto
+        setAccessibilityLabel(aiuto)
+        target = bersaglio
+        action = azione
+        translatesAutoresizingMaskIntoConstraints = false
+        widthAnchor.constraint(equalToConstant: corpo + 20).isActive = true
+        heightAnchor.constraint(equalToConstant: corpo + 20).isActive = true
+        tinta()
+    }
+    required init?(coder: NSCoder) { nil }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeAlways], owner: self))
+    }
+    override func mouseEntered(with e: NSEvent) { dentro = true;  tinta() }
+    override func mouseExited(with e: NSEvent)  { dentro = false; tinta() }
+    override func resetCursorRects() { addCursorRect(bounds, cursor: .pointingHand) }
+    private func tinta() { contentTintColor = dentro ? inchiostri.1 : inchiostri.0 }
+}
+
+/// Il sigillo dell'esito, al posto di «¡Muy bien!» e «No, si dice così»: un tondo pieno col
+/// suo segno. Arancio col ✓ = giusta · acqua con la ✕ = sbagliata · neve col ✓ = quasi.
+final class Sigillo: NSView {
+    private let lato: CGFloat = 34
+
+    init(_ nome: String, fondo: NSColor, inchiostro: NSColor) {
+        super.init(frame: .zero)
+        wantsLayer = true
+        layer?.backgroundColor = fondo.cgColor
+        layer?.cornerRadius = lato / 2
+        translatesAutoresizingMaskIntoConstraints = false
+        let segno = NSImageView()
+        segno.image = simbolo(nome, 15, .heavy)
+        segno.contentTintColor = inchiostro
+        segno.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(segno)
+        NSLayoutConstraint.activate([
+            widthAnchor.constraint(equalToConstant: lato), heightAnchor.constraint(equalToConstant: lato),
+            segno.centerXAnchor.constraint(equalTo: centerXAnchor), segno.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+    }
+    required init?(coder: NSCoder) { nil }
+
+    /// Lo stesso gesto della cifra che sale: atterra da più grande, sul suo centro.
+    func appare() {
+        guard let l = layer else { return }
+        let m = CGPoint(x: lato / 2, y: lato / 2)
+        var da = CATransform3DMakeTranslation(m.x, m.y, 0)
+        da = CATransform3DScale(da, 16.0/10, 16.0/10, 1)
+        da = CATransform3DTranslate(da, -m.x, -m.y, 0)
+        let pulsa = CABasicAnimation(keyPath: "transform")
+        pulsa.fromValue = da; pulsa.toValue = CATransform3DIdentity
+        pulsa.duration = 5.0/10; pulsa.timingFunction = curva
+        let entra = CABasicAnimation(keyPath: "opacity")
+        entra.fromValue = 0; entra.toValue = 1; entra.duration = 3.0/10
+        l.add(pulsa, forKey: "pulsa")
+        l.add(entra, forKey: "entra")
+    }
+}

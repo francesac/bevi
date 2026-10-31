@@ -122,52 +122,48 @@ final class Scala: NSView {
     }
 }
 
-/// I numeri in fondo alla carta: tre coppie, la cifra grande e accanto cosa conta. Quando una
-/// cifra sale si accende d'arancio, pulsa una volta e lascia salire un «+1».
+/// I numeri in fondo alla carta: tre coppie, un segno e la cifra (☀ oggi · ✓ giuste · ★ sapute;
+/// il nome sta nel suggerimento). Quando una cifra sale si accende d'arancio, pulsa una volta e
+/// lascia salire un «+1».
 final class Progressi: NSStackView {
     private final class Cifra {
         let numero = NSTextField(labelWithString: "")
-        let etichetta = NSTextField(labelWithString: "")
         let colonna: NSStackView
         var valore: Int
 
-        init(_ v: Int, _ testo: String) {
+        init(_ v: Int, _ segno: String, _ nome: String) {
             valore = v
-            numero.font = Caratteri.tondo(22, .heavy)
+            numero.font = Caratteri.tondo(20, .heavy)
             numero.textColor = Tinte.neve
             numero.stringValue = "\(v)"
             numero.wantsLayer = true
-            etichetta.font = Caratteri.tondo(12, .medium)
-            etichetta.textColor = Tinte.tenue
-            etichetta.stringValue = testo
-            colonna = NSStackView(views: [numero, etichetta])
+            let icona = NSImageView()
+            icona.image = simbolo(segno, 14, .bold)
+            icona.contentTintColor = Tinte.tenue
+            colonna = NSStackView(views: [icona, numero])
             colonna.orientation = .horizontal
-            colonna.alignment = .firstBaseline
+            colonna.alignment = .centerY
             colonna.spacing = 7
+            colonna.toolTip = nome
         }
     }
 
     private let oggi: Cifra, giuste: Cifra, sapute: Cifra
 
     init(_ n: Quaderno.Numeri) {
-        oggi   = Cifra(n.oggi, "oggi")
-        giuste = Cifra(n.giuste, "giuste")
-        sapute = Cifra(n.sapute, Progressi.nomeSapute(n))
+        oggi   = Cifra(n.oggi, "sun.max.fill", "risposte oggi")
+        giuste = Cifra(n.giuste, "checkmark", "risposte giuste")
+        sapute = Cifra(n.sapute, "star.fill", "schede sapute su \(n.totale)")
         super.init(frame: .zero)
         orientation = .horizontal
-        alignment = .firstBaseline
-        spacing = 34
+        alignment = .centerY
+        spacing = 30
         for c in [oggi, giuste, sapute] { addArrangedSubview(c.colonna) }
     }
     required init?(coder: NSCoder) { nil }
 
-    private static func nomeSapute(_ n: Quaderno.Numeri) -> String {
-        "\(n.sapute == 1 ? "saputa" : "sapute") su \(n.totale)"
-    }
-
     /// I numeri nuovi, appena si risponde. Quelli saliti si festeggiano.
     func aggiorna(_ n: Quaderno.Numeri, ritardo: TimeInterval = 45.0/100) {
-        sapute.etichetta.stringValue = Progressi.nomeSapute(n)
         var saliti: [(Cifra, Int)] = []
         for (c, v) in [(oggi, n.oggi), (giuste, n.giuste), (sapute, n.sapute)] {
             if v > c.valore { saliti.append((c, v - c.valore)) }
