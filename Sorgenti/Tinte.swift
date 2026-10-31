@@ -24,6 +24,7 @@ enum Tinte {
     static let incavo  = esa(0x4D302D)   // tappe vuote, il filo sopra i numeri
     static let bordo   = esa(0x5A3A36)   // il bordo del campo
     static let rilievo = esa(0x45292A)   // le pillole spente
+    static let fondale = esa(0x2A4749)   // l'acqua in fondo: la banda dell'errore, ⛔ un grigio
 
     /// Il velo sugli schermi: lo stesso marrone, più scuro, così la carta ne esce come un'isola.
     static let veloSu  = esa(0x2B1816, 88.0 / 100)

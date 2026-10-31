@@ -27,12 +27,15 @@ final class Scala: NSView {
     private let lato = CGSize(width: 28, height: 8)
     private let passo: CGFloat = 5, soglia: CGFloat = 13
 
-    private let prima: Int, dopo: Int, esito: Esito
+    private let prima: Int
+    private var dopo: Int, esito: Esito?
     private var pieni: [CALayer] = []
     private var larghezzaTotale: CGFloat = 0
 
-    init(prima: Int, dopo: Int, esito: Esito) {
-        self.prima = min(prima, Scala.tappe); self.dopo = min(dopo, Scala.tappe); self.esito = esito
+    /// Dal 31/10 la scala sta in cima alla carta già PRIMA della risposta, come la barra di
+    /// Duolingo: si vede cosa c'è in gioco. Alla risposta `rispondi` la fa salire o spegnere.
+    init(prima: Int) {
+        self.prima = min(prima, Scala.tappe); self.dopo = self.prima
         super.init(frame: .zero)
         wantsLayer = true
         translatesAutoresizingMaskIntoConstraints = false
@@ -74,8 +77,16 @@ final class Scala: NSView {
         }
     }
 
+    /// La risposta è arrivata: la tappa nuova si accende, o quelle fatte si spengono.
+    func rispondi(dopo nuova: Int, esito e: Esito) {
+        dopo = min(nuova, Scala.tappe); esito = e
+        disponi()
+        accendi()
+        toolTip = didascalia.0
+    }
+
     /// Il gesto: la tappa nuova cresce da sinistra con l'alone, o le tappe perse si spengono.
-    func accendi(dopo ritardo: CFTimeInterval = 25.0/100) {
+    private func accendi(dopo ritardo: CFTimeInterval = 25.0/100) {
         let ora = CACurrentMediaTime() + ritardo
         if esito == .sbagliato {
             for p in pieni.prefix(prima) {
@@ -109,6 +120,7 @@ final class Scala: NSView {
     /// Cosa dice la scala, a parole, accanto ai gradini.
     var didascalia: (String, NSColor, NSFont.Weight) {
         let quando = fraQuanto(Quaderno.intervalli[max(0, min(dopo, Quaderno.intervalli.count - 1))])
+        guard let esito else { return (prima == 0 ? "scheda nuova" : "tappa \(prima) di \(Scala.tappe)", Tinte.tenue, .medium) }
         switch esito {
         case .sbagliato:
             return (prima > 0 ? "si riparte · torna domani" : "torna domani", Tinte.acqua, .medium)

@@ -130,6 +130,10 @@ final class BottonePieno: NSButton {
     /// Il colore del bottone; la carta dello spagnolo lo vuole arancio, con l'ombra sotto.
     var fondo = Colori.acqua { didSet { tinta() } }
     var ombra: NSColor? { didSet { tinta() } }
+    /// I tondi della carta: macOS dà ai bottoni un margine invisibile che, col simbolo dentro,
+    /// li allungava a uovo (56 × 68). Qui il bottone è esattamente la sua forma.
+    var tondo = false { didSet { invalidateIntrinsicContentSize() } }
+    override var alignmentRectInsets: NSEdgeInsets { tondo ? NSEdgeInsetsZero : super.alignmentRectInsets }
 
     init(_ testo: String, azione: Selector, bersaglio: AnyObject) {
         super.init(frame: .zero)
