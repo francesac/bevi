@@ -227,9 +227,19 @@ final class Quaderno {
         var r = ricordi[s.id] ?? Ricordo()
         if r.viste == 0 && s.tipo != .parla { nuoveOggi += 1; ripassiDiFila = 0 }
         else if s.tipo != .parla { ripassiDiFila += 1 }
-        r.viste += 1
         ultimoTipo = s.tipo
         senzaVoce = s.tipo.aVoce ? 0 : senzaVoce + 1
+        r = Quaderno.dopo(r, s, esito, adesso: adesso)
+        ricordi[s.id] = r
+        salva()
+        if s.tipo.aVoce && !trascritto.isEmpty { annotaDiario(s, trascritto, esito) }
+    }
+
+    /// Cosa diventa il ricordo di una scheda dopo una risposta. Sta a parte perché lo usa anche
+    /// il piede della carta, che mostra i numeri aggiornati appena si risponde (31/10).
+    private static func dopo(_ prima: Ricordo, _ s: Scheda, _ esito: Esito, adesso: Int) -> Ricordo {
+        var r = prima
+        r.viste += 1
         switch esito {
         case .giusto:    r.giuste += 1; r.scatola = min(r.scatola + 1, Quaderno.intervalli.count - 1)
         case .quasi:     r.giuste += 1                       // resta dov'è: torna presto uguale
@@ -237,9 +247,7 @@ final class Quaderno {
         case .libero:    r.scatola = 0                       // le domande personali girano
         }
         r.scadenza = adesso + (s.tipo == .parla ? 3 * 86400 : Quaderno.intervalli[r.scatola])
-        ricordi[s.id] = r
-        salva()
-        if s.tipo.aVoce && !trascritto.isEmpty { annotaDiario(s, trascritto, esito) }
+        return r
     }
 
     /// Una carta chiusa senza risposta (Salta, Esc, nessuno davanti, la webcam) non è un esito:
@@ -273,14 +281,22 @@ final class Quaderno {
 
     // ── i numeri per il pannello ──────────────────────────────────────────────
 
-    struct Numeri { let viste: Int; let sapute: Int; let daRipassare: Int; let totale: Int }
+    /// `giuste` = le risposte giuste (e quasi) di sempre: è il numero che sale a OGNI risposta
+    /// giusta. Viste e sapute da sole restavano ferme quando si indovinava una scheda già vista,
+    /// e la carta diceva «25 viste · 1 sapute» prima e dopo (31/10, Francesco: «non conta»).
+    struct Numeri { let viste: Int; let giuste: Int; let sapute: Int; let daRipassare: Int; let totale: Int }
 
-    func numeri(adesso: Int = Int(Date().timeIntervalSince1970)) -> Numeri {
+    /// `conRisposta`: i numeri come saranno dopo quella risposta, che si salva solo alla chiusura.
+    func numeri(adesso: Int = Int(Date().timeIntervalSince1970),
+                conRisposta: (Scheda, Esito)? = nil) -> Numeri {
+        var tutti = ricordi
+        if let (s, e) = conRisposta { tutti[s.id] = Quaderno.dopo(tutti[s.id] ?? Ricordo(), s, e, adesso: adesso) }
         let vere = schede.filter { $0.tipo != .parla }
-        let viste = vere.filter { (ricordi[$0.id]?.viste ?? 0) > 0 }
+        let viste = vere.filter { (tutti[$0.id]?.viste ?? 0) > 0 }
         return Numeri(viste: viste.count,
-                      sapute: viste.filter { (ricordi[$0.id]?.scatola ?? 0) >= 3 }.count,
-                      daRipassare: viste.filter { (ricordi[$0.id]?.scadenza ?? 0) <= adesso }.count,
+                      giuste: viste.reduce(0) { $0 + (tutti[$1.id]?.giuste ?? 0) },
+                      sapute: viste.filter { (tutti[$0.id]?.scatola ?? 0) >= 3 }.count,
+                      daRipassare: viste.filter { (tutti[$0.id]?.scadenza ?? 0) <= adesso }.count,
                       totale: vere.count)
     }
 }

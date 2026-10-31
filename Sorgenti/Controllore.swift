@@ -268,7 +268,7 @@ final class Controllore: NSViewController {
         spagnolo.acceso = imp.spagnolo
         let n = Quaderno.condiviso.numeri()
         quantoSpagnolo.stringValue = n.viste == 0 ? "\(n.totale) schede da scoprire"
-            : "\(n.sapute) sapute su \(n.totale)" + (n.daRipassare > 0 ? "  ·  \(n.daRipassare) da ripassare" : "")
+            : Esercizio.fatte(n) + (n.daRipassare > 0 ? "  ·  \(n.daRipassare) da ripassare" : "")
         rigaSpagnolo.alphaValue = imp.spagnolo ? 1 : 45.0/100
 
         gruppoPasso.segna(imp.intervallo / 60)

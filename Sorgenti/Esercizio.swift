@@ -72,6 +72,7 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
     private var aspettaVoto = false    // senza orecchio il voto lo dà lui: il clic a vuoto non chiude
     private var chiudendo = false
     private var soluzioneIntera = ""
+    private var contaPiede: NSTextField?
 
     private let finestra: PannelloEsercizio
     private var veli: [NSWindow] = []
@@ -174,10 +175,7 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
         colonna.setCustomSpacing(16, after: zonaEsito)
 
         aggiungi(filo(), pieno: true)
-        let n = Quaderno.condiviso.numeri()
-        // i progressi si vedono: le schede viste crescono da subito, le sapute (una settimana
-        // senza sbagliare) arrivano dopo. Con le sole «0 sapute su 777» sembrava non contasse niente.
-        let fatte = n.viste == 0 ? "la prima scheda" : "\(n.viste) viste  ·  \(n.sapute) sapute su \(n.totale)"
+        let fatte = Esercizio.fatte(Quaderno.condiviso.numeri())
         if let b = bevi {
             // il promemoria dell'acqua, sotto l'esercizio: lo stesso avviso, ⛔ un secondo dopo il primo
             let goccia = scritta("💧", corpo: 26)
@@ -189,6 +187,7 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
             parole.alignment = .leading
             parole.spacing = 0
             let conta = scritta(fatte, corpo: 11, colore: Colori.tenue)
+            contaPiede = conta
             let riga = NSStackView(views: [goccia, parole, NSView(), conta])
             riga.orientation = .horizontal
             riga.alignment = .centerY
@@ -196,7 +195,9 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
             colonna.setCustomSpacing(14, after: colonna.arrangedSubviews.last!)
             aggiungi(riga, pieno: true)
         } else {
-            aggiungi(scritta("\(piedeTesto)  ·  \(fatte)", corpo: 11, colore: Colori.tenue))
+            let conta = scritta("\(piedeTesto)  ·  \(fatte)", corpo: 11, colore: Colori.tenue)
+            contaPiede = conta
+            aggiungi(conta)
         }
 
         impostaPrimoStato()
@@ -569,9 +570,27 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
         }
     }
 
+    /// I progressi nel piede: le viste crescono con le schede nuove, le giuste a ogni risposta
+    /// giusta (anche su una già vista), le sapute dopo una settimana senza sbagliare.
+    static func fatte(_ n: Quaderno.Numeri) -> String {
+        guard n.viste > 0 else { return "la prima scheda" }
+        return "\(n.viste) viste  ·  \(n.giuste) giuste  ·  \(n.sapute) \(n.sapute == 1 ? "saputa" : "sapute") su \(n.totale)"
+    }
+
+    /// Il piede si riscrive appena si risponde: prima restava fermo ai numeri di quando la carta
+    /// si era aperta, perché la risposta si salva solo alla chiusura (31/10).
+    private func aggiornaPiede(_ e: Esito) {
+        guard let c = contaPiede, c.attributedStringValue.length > 0 else { return }
+        let n = Esercizio.fatte(Quaderno.condiviso.numeri(conRisposta: (scheda, e)))
+        let testo = bevi == nil ? "\(piedeTesto)  ·  \(n)" : n
+        let stile = c.attributedStringValue.attributes(at: 0, effectiveRange: nil)
+        c.attributedStringValue = NSAttributedString(string: testo, attributes: stile)
+    }
+
     private func mostraEsito(_ v: Correttore.Verdetto, giudichi: Bool = false) {
         esito = v.esito
         aspettaVoto = giudichi
+        if !giudichi { aggiornaPiede(v.esito) }
         campo?.isEditable = false
         finestra.makeFirstResponder(nil)     // via la selezione, e Invio torna alla carta: chiude
         zonaEsito.arrangedSubviews.forEach { $0.removeFromSuperview() }
