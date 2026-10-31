@@ -90,6 +90,8 @@ final class Quaderno {
     private var ricordi: [String: Ricordo] = [:]
     private var nuoveOggi = 0
     private var giornoNuove = ""
+    private var giusteOggi = 0      // le risposte giuste (e quasi) di oggi: il numero del piede che premia la giornata
+    private var giornoGiuste = ""
     private var ultimoTipo: Tipo?
     private var senzaVoce = 0
     private var ripassiDiFila = 0   // ripassi dall'ultima novità: a uno, tocca a una scheda nuova
@@ -131,6 +133,9 @@ final class Quaderno {
             if c.first == "#nuove", c.count >= 3 {
                 giornoNuove = c[1]; nuoveOggi = Int(c[2]) ?? 0; continue
             }
+            if c.first == "#oggi", c.count >= 3 {
+                giornoGiuste = c[1]; giusteOggi = Int(c[2]) ?? 0; continue
+            }
             guard c.count >= 5 else { continue }
             ricordi[c[0]] = Ricordo(scatola: Int(c[1]) ?? 0, scadenza: Int(c[2]) ?? 0,
                                     viste: Int(c[3]) ?? 0, giuste: Int(c[4]) ?? 0)
@@ -139,7 +144,7 @@ final class Quaderno {
 
     private func salva() {
         Casa.prepara()
-        var testo = "#nuove\t\(giornoNuove)\t\(nuoveOggi)\n"
+        var testo = "#nuove\t\(giornoNuove)\t\(nuoveOggi)\n#oggi\t\(giornoGiuste)\t\(giusteOggi)\n"
         for (id, r) in ricordi.sorted(by: { $0.key < $1.key }) {
             testo += "\(id)\t\(r.scatola)\t\(r.scadenza)\t\(r.viste)\t\(r.giuste)\n"
         }
@@ -231,13 +236,19 @@ final class Quaderno {
         senzaVoce = s.tipo.aVoce ? 0 : senzaVoce + 1
         r = Quaderno.dopo(r, s, esito, adesso: adesso)
         ricordi[s.id] = r
+        if s.tipo != .parla && (esito == .giusto || esito == .quasi) {
+            if giornoGiuste != Conto.oggi { giornoGiuste = Conto.oggi; giusteOggi = 0 }
+            giusteOggi += 1
+        }
         salva()
         if s.tipo.aVoce && !trascritto.isEmpty { annotaDiario(s, trascritto, esito) }
     }
 
     /// Cosa diventa il ricordo di una scheda dopo una risposta. Sta a parte perché lo usa anche
     /// il piede della carta, che mostra i numeri aggiornati appena si risponde (31/10).
-    private static func dopo(_ prima: Ricordo, _ s: Scheda, _ esito: Esito, adesso: Int) -> Ricordo {
+    func ricordo(_ s: Scheda) -> Ricordo { ricordi[s.id] ?? Ricordo() }
+
+    static func dopo(_ prima: Ricordo, _ s: Scheda, _ esito: Esito, adesso: Int) -> Ricordo {
         var r = prima
         r.viste += 1
         switch esito {
@@ -284,7 +295,7 @@ final class Quaderno {
     /// `giuste` = le risposte giuste (e quasi) di sempre: è il numero che sale a OGNI risposta
     /// giusta. Viste e sapute da sole restavano ferme quando si indovinava una scheda già vista,
     /// e la carta diceva «25 viste · 1 sapute» prima e dopo (31/10, Francesco: «non conta»).
-    struct Numeri { let viste: Int; let giuste: Int; let sapute: Int; let daRipassare: Int; let totale: Int }
+    struct Numeri { let oggi: Int; let viste: Int; let giuste: Int; let sapute: Int; let daRipassare: Int; let totale: Int }
 
     /// `conRisposta`: i numeri come saranno dopo quella risposta, che si salva solo alla chiusura.
     func numeri(adesso: Int = Int(Date().timeIntervalSince1970),
@@ -293,7 +304,9 @@ final class Quaderno {
         if let (s, e) = conRisposta { tutti[s.id] = Quaderno.dopo(tutti[s.id] ?? Ricordo(), s, e, adesso: adesso) }
         let vere = schede.filter { $0.tipo != .parla }
         let viste = vere.filter { (tutti[$0.id]?.viste ?? 0) > 0 }
-        return Numeri(viste: viste.count,
+        var oggi = giornoGiuste == Conto.oggi ? giusteOggi : 0
+        if let (s, e) = conRisposta, s.tipo != .parla, e == .giusto || e == .quasi { oggi += 1 }
+        return Numeri(oggi: oggi, viste: viste.count,
                       giuste: viste.reduce(0) { $0 + (tutti[$1.id]?.giuste ?? 0) },
                       sapute: viste.filter { (tutti[$0.id]?.scatola ?? 0) >= 3 }.count,
                       daRipassare: viste.filter { (tutti[$0.id]?.scadenza ?? 0) <= adesso }.count,

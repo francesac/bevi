@@ -1,0 +1,226 @@
+import AppKit
+
+// ── il premio di una risposta ─────────────────────────────────────────────────
+// 31/10, Francesco: «rendilo visivamente più interessante e rewarding». Un gesto solo, lo stesso
+// dappertutto: ciò che si guadagna SI ACCENDE (cresce da sinistra o pulsa, con la `curva` di casa)
+// e lascia un alone che si spegne piano. ⛔ rimbalzi, ⛔ coriandoli: è una carta che premia, non una slot.
+
+/// Quanto manca al prossimo ripasso, a parole.
+func fraQuanto(_ secondi: Int) -> String {
+    switch secondi / 86400 {
+    case ...1:   return "torna domani"
+    case 2...5:  return "torna fra \(secondi / 86400) giorni"
+    case 6...8:  return "torna fra una settimana"
+    case 9...25: return "torna fra \(secondi / 86400) giorni"
+    case 26...45: return "torna fra un mese"
+    case 46...120: return "torna fra tre mesi"
+    default:     return "torna fra sei mesi"
+    }
+}
+
+/// La scala di UNA scheda: sei tappe, dal ripasso fra tre giorni a quello fra sei mesi. Dalla
+/// terza la scheda è «saputa», e lì c'è più aria fra i gradini. Alla risposta giusta la tappa
+/// nuova si accende di verde; a quella sbagliata le tappe fatte si spengono.
+final class Scala: NSView {
+    static let tappe = 6
+    private let lato = CGSize(width: 26, height: 7)
+    private let passo: CGFloat = 4, soglia: CGFloat = 12
+
+    private let prima: Int, dopo: Int, esito: Esito
+    private var pieni: [CALayer] = []
+    private var larghezzaTotale: CGFloat = 0
+
+    init(prima: Int, dopo: Int, esito: Esito) {
+        self.prima = min(prima, Scala.tappe); self.dopo = min(dopo, Scala.tappe); self.esito = esito
+        super.init(frame: .zero)
+        wantsLayer = true
+        translatesAutoresizingMaskIntoConstraints = false
+        var x: CGFloat = 0
+        for i in 1...Scala.tappe {
+            if i == 3 { x += soglia - passo }
+            let fondo = CALayer()
+            fondo.frame = CGRect(x: x, y: 0, width: lato.width, height: lato.height)
+            fondo.cornerRadius = lato.height / 2
+            fondo.backgroundColor = Colori.pillolaSu.cgColor
+            layer?.addSublayer(fondo)
+
+            let pieno = CALayer()
+            pieno.anchorPoint = .zero
+            pieno.position = CGPoint(x: x, y: 0)
+            pieno.bounds = CGRect(origin: .zero, size: lato)
+            pieno.cornerRadius = lato.height / 2
+            pieno.shadowOffset = .zero
+            pieno.shadowRadius = 5
+            pieno.isHidden = true
+            layer?.addSublayer(pieno)
+            pieni.append(pieno)
+            x += lato.width + passo
+        }
+        larghezzaTotale = x - passo
+        disponi()
+    }
+    required init?(coder: NSCoder) { nil }
+
+    override var intrinsicContentSize: NSSize { NSSize(width: larghezzaTotale, height: lato.height) }
+
+    /// Lo stato di partenza: le tappe già fatte prima di questa risposta.
+    private func disponi() {
+        for (i, p) in pieni.enumerated() {
+            let tappa = i + 1
+            p.isHidden = tappa > max(prima, dopo)
+            p.backgroundColor = (esito == .sbagliato ? Colori.corallo : Colori.acqua).cgColor
+            if tappa > prima { p.backgroundColor = Colori.verde.cgColor }
+        }
+    }
+
+    /// Il gesto: la tappa nuova cresce da sinistra con l'alone, o le tappe perse si spengono.
+    func accendi(dopo ritardo: CFTimeInterval = 25.0/100) {
+        let ora = CACurrentMediaTime() + ritardo
+        if esito == .sbagliato {
+            for p in pieni.prefix(prima) {
+                let via = CABasicAnimation(keyPath: "opacity")
+                via.fromValue = 1; via.toValue = 0
+                // più lento della tappa che si accende: chi ha sbagliato deve VEDERE cosa perde
+                via.beginTime = ora + 35.0/100; via.duration = 12.0/10; via.timingFunction = curva
+                via.fillMode = .backwards
+                p.opacity = 0
+                p.add(via, forKey: "spegni")
+            }
+            return
+        }
+        guard dopo > prima, dopo >= 1 else { return }
+        let p = pieni[dopo - 1]
+        let cresce = CABasicAnimation(keyPath: "bounds.size.width")
+        cresce.fromValue = 0; cresce.toValue = lato.width
+        cresce.beginTime = ora; cresce.duration = 55.0/100; cresce.timingFunction = curva
+        cresce.fillMode = .backwards
+        p.add(cresce, forKey: "cresce")
+
+        p.shadowColor = Colori.verde.cgColor
+        p.shadowOpacity = 35.0/100
+        let alone = CABasicAnimation(keyPath: "shadowOpacity")
+        alone.fromValue = 1; alone.toValue = 35.0/100
+        alone.beginTime = ora + 4.0/10; alone.duration = 16.0/10; alone.timingFunction = curva
+        alone.fillMode = .backwards
+        p.add(alone, forKey: "alone")
+    }
+
+    /// Cosa dice la scala, a parole, accanto ai gradini.
+    var didascalia: (String, NSColor, NSFont.Weight) {
+        let quando = fraQuanto(Quaderno.intervalli[max(0, min(dopo, Quaderno.intervalli.count - 1))])
+        switch esito {
+        case .sbagliato:
+            return (prima > 0 ? "si riparte · torna domani" : "torna domani", Colori.tenue, .regular)
+        case .quasi:
+            return (prima > 0 ? "resta alla tappa \(prima) · \(quando)" : quando, Colori.tenue, .regular)
+        default:
+            if dopo == 3 && prima < 3 { return ("Saputa!  ·  \(quando)", Colori.verde, .semibold) }
+            if dopo == prima           { return ("la sai da mesi · \(quando)", Colori.verde, .regular) }
+            return ("tappa \(dopo) di \(Scala.tappe) · \(quando)", Colori.tenue, .regular)
+        }
+    }
+}
+
+/// I numeri in fondo alla carta: tre colonne, la cifra sopra e cosa conta sotto. Quando una
+/// cifra sale si accende di verde, pulsa una volta e lascia salire un «+1».
+final class Progressi: NSStackView {
+    private final class Cifra {
+        let numero = NSTextField(labelWithString: "")
+        let etichetta = NSTextField(labelWithString: "")
+        let colonna: NSStackView
+        var valore: Int
+
+        init(_ v: Int, _ testo: String) {
+            valore = v
+            numero.font = NSFont.monospacedDigitSystemFont(ofSize: 17, weight: .semibold)
+            numero.textColor = Colori.testo
+            numero.stringValue = "\(v)"
+            numero.wantsLayer = true
+            etichetta.font = NSFont.systemFont(ofSize: 10.5)
+            etichetta.textColor = Colori.tenue
+            etichetta.stringValue = testo
+            colonna = NSStackView(views: [numero, etichetta])
+            colonna.orientation = .vertical
+            colonna.alignment = .centerX
+            colonna.spacing = 0
+        }
+    }
+
+    private let oggi: Cifra, giuste: Cifra, sapute: Cifra
+
+    init(_ n: Quaderno.Numeri) {
+        oggi   = Cifra(n.oggi, "oggi")
+        giuste = Cifra(n.giuste, "giuste")
+        sapute = Cifra(n.sapute, Progressi.nomeSapute(n))
+        super.init(frame: .zero)
+        orientation = .horizontal
+        alignment = .centerY
+        spacing = 20
+        for c in [oggi, giuste, sapute] { addArrangedSubview(c.colonna) }
+    }
+    required init?(coder: NSCoder) { nil }
+
+    private static func nomeSapute(_ n: Quaderno.Numeri) -> String {
+        "\(n.sapute == 1 ? "saputa" : "sapute") su \(n.totale)"
+    }
+
+    /// I numeri nuovi, appena si risponde. Quelli saliti si festeggiano.
+    func aggiorna(_ n: Quaderno.Numeri, ritardo: TimeInterval = 45.0/100) {
+        sapute.etichetta.stringValue = Progressi.nomeSapute(n)
+        var saliti: [(Cifra, Int)] = []
+        for (c, v) in [(oggi, n.oggi), (giuste, n.giuste), (sapute, n.sapute)] {
+            if v > c.valore { saliti.append((c, v - c.valore)) }
+            c.valore = v
+            c.numero.stringValue = "\(v)"
+        }
+        guard !saliti.isEmpty else { return }
+        for (c, _) in saliti { c.numero.textColor = Colori.verde }
+        DispatchQueue.main.asyncAfter(deadline: .now() + ritardo) { [weak self] in
+            guard let self else { return }
+            for (i, (c, quanti)) in saliti.enumerated() {
+                DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 12.0/100) {
+                    self.festeggia(c, quanti)
+                }
+            }
+        }
+    }
+
+    private func festeggia(_ c: Cifra, _ quanti: Int) {
+        // ① la cifra pulsa: atterra da un filo più grande, sul suo centro
+        if let l = c.numero.layer {
+            let m = CGPoint(x: l.bounds.midX, y: l.bounds.midY)
+            var da = CATransform3DMakeTranslation(m.x, m.y, 0)
+            da = CATransform3DScale(da, 14.0/10, 14.0/10, 1)
+            da = CATransform3DTranslate(da, -m.x, -m.y, 0)
+            let pulsa = CABasicAnimation(keyPath: "transform")
+            pulsa.fromValue = da; pulsa.toValue = CATransform3DIdentity
+            pulsa.duration = 55.0/100; pulsa.timingFunction = curva
+            l.add(pulsa, forKey: "pulsa")
+        }
+        // ② il «+1» sale e svanisce, sopra la cifra
+        if let carta = window?.contentView {
+            let piu = NSTextField(labelWithString: "+\(quanti)")
+            piu.font = NSFont.systemFont(ofSize: 12, weight: .bold)
+            piu.textColor = Colori.verde
+            piu.sizeToFit()
+            let dove = c.numero.convert(c.numero.bounds, to: carta)
+            piu.frame.origin = CGPoint(x: dove.midX - piu.frame.width / 2, y: dove.maxY - 2)
+            carta.addSubview(piu)
+            NSAnimationContext.runAnimationGroup({ ctx in
+                ctx.duration = 11.0/10
+                ctx.timingFunction = curva
+                ctx.allowsImplicitAnimation = true
+                piu.animator().setFrameOrigin(CGPoint(x: piu.frame.origin.x, y: piu.frame.origin.y + 18))
+                piu.animator().alphaValue = 0
+            }, completionHandler: { piu.removeFromSuperview() })
+        }
+        // ③ il verde si scioglie piano nel bianco
+        DispatchQueue.main.asyncAfter(deadline: .now() + 14.0/10) {
+            let sfuma = CATransition()
+            sfuma.type = .fade
+            sfuma.duration = 8.0/10
+            c.numero.layer?.add(sfuma, forKey: "sfuma")
+            c.numero.textColor = Colori.testo
+        }
+    }
+}

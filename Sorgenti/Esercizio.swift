@@ -72,7 +72,7 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
     private var aspettaVoto = false    // senza orecchio il voto lo dà lui: il clic a vuoto non chiude
     private var chiudendo = false
     private var soluzioneIntera = ""
-    private var contaPiede: NSTextField?
+    private var progressi: Progressi?
 
     private let finestra: PannelloEsercizio
     private var veli: [NSWindow] = []
@@ -175,7 +175,8 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
         colonna.setCustomSpacing(16, after: zonaEsito)
 
         aggiungi(filo(), pieno: true)
-        let fatte = Esercizio.fatte(Quaderno.condiviso.numeri())
+        let numeri = Progressi(Quaderno.condiviso.numeri())
+        progressi = numeri
         if let b = bevi {
             // il promemoria dell'acqua, sotto l'esercizio: lo stesso avviso, ⛔ un secondo dopo il primo
             let goccia = scritta("💧", corpo: 26)
@@ -186,18 +187,17 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
             parole.orientation = .vertical
             parole.alignment = .leading
             parole.spacing = 0
-            let conta = scritta(fatte, corpo: 11, colore: Colori.tenue)
-            contaPiede = conta
-            let riga = NSStackView(views: [goccia, parole, NSView(), conta])
+            let riga = NSStackView(views: [goccia, parole, NSView(), numeri])
             riga.orientation = .horizontal
             riga.alignment = .centerY
             riga.spacing = 12
             colonna.setCustomSpacing(14, after: colonna.arrangedSubviews.last!)
             aggiungi(riga, pieno: true)
         } else {
-            let conta = scritta("\(piedeTesto)  ·  \(fatte)", corpo: 11, colore: Colori.tenue)
-            contaPiede = conta
-            aggiungi(conta)
+            let riga = NSStackView(views: [scritta(piedeTesto, corpo: 11, colore: Colori.tenue), NSView(), numeri])
+            riga.orientation = .horizontal
+            riga.alignment = .centerY
+            aggiungi(riga, pieno: true)
         }
 
         impostaPrimoStato()
@@ -574,17 +574,28 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
     /// giusta (anche su una già vista), le sapute dopo una settimana senza sbagliare.
     static func fatte(_ n: Quaderno.Numeri) -> String {
         guard n.viste > 0 else { return "la prima scheda" }
-        return "\(n.viste) viste  ·  \(n.giuste) giuste  ·  \(n.sapute) \(n.sapute == 1 ? "saputa" : "sapute") su \(n.totale)"
+        return "\(n.oggi) oggi  ·  \(n.viste) viste  ·  \(n.giuste) giuste  ·  \(n.sapute) \(n.sapute == 1 ? "saputa" : "sapute") su \(n.totale)"
     }
 
     /// Il piede si riscrive appena si risponde: prima restava fermo ai numeri di quando la carta
     /// si era aperta, perché la risposta si salva solo alla chiusura (31/10).
     private func aggiornaPiede(_ e: Esito) {
-        guard let c = contaPiede, c.attributedStringValue.length > 0 else { return }
-        let n = Esercizio.fatte(Quaderno.condiviso.numeri(conRisposta: (scheda, e)))
-        let testo = bevi == nil ? "\(piedeTesto)  ·  \(n)" : n
-        let stile = c.attributedStringValue.attributes(at: 0, effectiveRange: nil)
-        c.attributedStringValue = NSAttributedString(string: testo, attributes: stile)
+        progressi?.aggiorna(Quaderno.condiviso.numeri(conRisposta: (scheda, e)))
+    }
+
+    /// Accanto a «¡Muy bien!»: la scala della scheda, con la tappa che si accende.
+    private func scalaDellaScheda(_ e: Esito) -> NSView? {
+        guard scheda.tipo != .parla, e != .libero else { return nil }
+        let prima = Quaderno.condiviso.ricordo(scheda)
+        let dopo = Quaderno.dopo(prima, scheda, e, adesso: Int(Date().timeIntervalSince1970))
+        let scala = Scala(prima: prima.scatola, dopo: dopo.scatola, esito: e)
+        let (testo, colore, peso) = scala.didascalia
+        let gruppo = NSStackView(views: [scala, scritta(testo, corpo: 11, peso: peso, colore: colore)])
+        gruppo.orientation = .vertical
+        gruppo.alignment = .trailing
+        gruppo.spacing = 5
+        DispatchQueue.main.async { scala.accendi() }
+        return gruppo
     }
 
     private func mostraEsito(_ v: Correttore.Verdetto, giudichi: Bool = false) {
@@ -613,7 +624,15 @@ final class Esercizio: NSObject, NSTextFieldDelegate {
             case .sbagliato: (parola, colore) = ("No, si dice così", Colori.corallo)
             case .libero:    (parola, colore) = ("Salvata nel diario", Colori.verde)
             }
-            zonaEsito.addArrangedSubview(scritta(parola, corpo: 16, peso: .semibold, colore: colore))
+            let titolo = scritta(parola, corpo: 16, peso: .semibold, colore: colore)
+            if let scala = scalaDellaScheda(v.esito) {
+                let riga = NSStackView(views: [titolo, NSView(), scala])
+                riga.orientation = .horizontal
+                riga.alignment = .centerY
+                zonaEsito.addArrangedSubview(riga)
+            } else {
+                zonaEsito.addArrangedSubview(titolo)
+            }
         }
         // ② cosa hai risposto tu, se non era già la forma insegnata
         if !tua.isEmpty, v.esito != .giusto || Correttore.pulisci(tua) != Correttore.pulisci(scheda.es) {
